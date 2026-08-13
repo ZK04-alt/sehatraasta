@@ -1,5 +1,3 @@
-
-
 > **WARNING - FICTIONAL DATA ONLY**
 >
 > Do not enter real patient information during development. Use only fictional cases and fictional documents.
@@ -7,7 +5,9 @@
 ## Product limits
 
 - SehatRaasta does not diagnose a condition.
+- SehatRaasta does not interpret clinical text, values, results, or images.
 - SehatRaasta does not recommend treatment.
+- SehatRaasta does not calculate medical urgency.
 - SehatRaasta does not replace a doctor, hospital record, or emergency service.
 - SehatRaasta organizes referral information and supporting documents.
 - A qualified person must review medical information before clinical use.
