@@ -1,0 +1,40 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Page-1" id="VrE5yiU9WRlx0NM4P-F5">
+    <mxGraphModel dx="774" dy="431" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" background="light-dark(#FFFFFF,#FFFFFF)" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="OlPKu-gh7jhq5CB7QZIf-3" parent="1" style="swimlane;childLayout=stackLayout;horizontal=1;startSize=50;horizontalStack=0;rounded=1;fontSize=14;fontStyle=0;strokeWidth=2;resizeParent=0;resizeLast=1;shadow=0;dashed=0;align=center;arcSize=4;whiteSpace=wrap;html=1;" value="Student" vertex="1">
+          <mxGeometry height="120" width="160" x="80" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="OlPKu-gh7jhq5CB7QZIf-4" parent="OlPKu-gh7jhq5CB7QZIf-3" style="align=left;strokeColor=none;fillColor=none;spacingLeft=4;spacingRight=4;fontSize=12;verticalAlign=top;resizable=0;rotatable=0;part=1;html=1;whiteSpace=wrap;" value="Name&lt;div&gt;Class&lt;/div&gt;&lt;div&gt;email&lt;/div&gt;&lt;div&gt;Student_id&lt;/div&gt;" vertex="1">
+          <mxGeometry height="70" width="160" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="OlPKu-gh7jhq5CB7QZIf-5" parent="1" style="swimlane;childLayout=stackLayout;horizontal=1;startSize=50;horizontalStack=0;rounded=1;fontSize=14;fontStyle=0;strokeWidth=2;resizeParent=0;resizeLast=1;shadow=0;dashed=0;align=center;arcSize=4;whiteSpace=wrap;html=1;" value="Book" vertex="1">
+          <mxGeometry height="120" width="160" x="560" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="OlPKu-gh7jhq5CB7QZIf-6" parent="OlPKu-gh7jhq5CB7QZIf-5" style="align=left;strokeColor=none;fillColor=none;spacingLeft=4;spacingRight=4;fontSize=12;verticalAlign=top;resizable=0;rotatable=0;part=1;html=1;whiteSpace=wrap;" value="Title&lt;div&gt;Author&#39;s name&lt;/div&gt;&lt;div&gt;Release date&lt;/div&gt;&lt;div&gt;ISBN&amp;nbsp;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="70" width="160" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="OlPKu-gh7jhq5CB7QZIf-7" parent="1" style="swimlane;childLayout=stackLayout;horizontal=1;startSize=50;horizontalStack=0;rounded=1;fontSize=14;fontStyle=0;strokeWidth=2;resizeParent=0;resizeLast=1;shadow=0;dashed=0;align=center;arcSize=4;whiteSpace=wrap;html=1;" value="Loan" vertex="1">
+          <mxGeometry height="120" width="160" x="320" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="OlPKu-gh7jhq5CB7QZIf-8" parent="OlPKu-gh7jhq5CB7QZIf-7" style="align=left;strokeColor=none;fillColor=none;spacingLeft=4;spacingRight=4;fontSize=12;verticalAlign=top;resizable=0;rotatable=0;part=1;html=1;whiteSpace=wrap;" value="Loan date&lt;div&gt;Expected return date&lt;/div&gt;&lt;div&gt;Loan ID&lt;/div&gt;" vertex="1">
+          <mxGeometry height="70" width="160" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="OlPKu-gh7jhq5CB7QZIf-10" edge="1" parent="1" source="OlPKu-gh7jhq5CB7QZIf-4" style="edgeStyle=entityRelationEdgeStyle;fontSize=12;html=1;endArrow=ERzeroToMany;startArrow=ERmandOne;rounded=0;startFill=0;exitX=0.967;exitY=0.371;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.75;entryDx=0;entryDy=0;" target="OlPKu-gh7jhq5CB7QZIf-7" value="">
+          <mxGeometry height="100" relative="1" width="100" as="geometry">
+            <mxPoint x="196.64" y="327.33000000000004" as="sourcePoint" />
+            <mxPoint x="310" y="240" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="OlPKu-gh7jhq5CB7QZIf-11" edge="1" parent="1" source="OlPKu-gh7jhq5CB7QZIf-6" style="edgeStyle=entityRelationEdgeStyle;fontSize=12;html=1;endArrow=ERzeroToMany;startArrow=ERmandOne;rounded=0;startFill=0;exitX=0;exitY=0.25;exitDx=0;exitDy=0;entryX=1;entryY=0.75;entryDx=0;entryDy=0;" target="OlPKu-gh7jhq5CB7QZIf-7" value="">
+          <mxGeometry height="100" relative="1" width="100" as="geometry">
+            <mxPoint x="499" y="130" as="sourcePoint" />
+            <mxPoint x="560" y="250" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
