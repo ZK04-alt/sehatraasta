@@ -1,0 +1,25 @@
+Scenario: A student tries to borrow an unavailable book
+
+Given a fictional student exists
+And a fictional book exists
+And another student already has an active loan for that book
+
+When student initiates loan for that book
+ 
+Then the system displays "This book is currently unavailable"
+And the system does not create a new loan
+And the existing loan remains unchanged
+
+-----------------------------------------------------------------------------------
+
+Scenario: An ordered test result is still pending
+
+Given a fictional referral bundle exists
+And test is performed
+And no result has been received by user
+
+When the user sees test status in app
+
+Then the app displays pending
+And the app does not show completed
+And the app does not show results

@@ -1,10 +1,6 @@
-# SehatRaasta Safety Rules
 
-## Current development status
 
-SehatRaasta is an educational prototype. It is not a medical device or a clinical record system.
-
-> **WARNING — FICTIONAL DATA ONLY**
+> **WARNING - FICTIONAL DATA ONLY**
 >
 > Do not enter real patient information during development. Use only fictional cases and fictional documents.
 
@@ -15,7 +11,7 @@ SehatRaasta is an educational prototype. It is not a medical device or a clinica
 - SehatRaasta does not replace a doctor, hospital record, or emergency service.
 - SehatRaasta organizes referral information and supporting documents.
 - A qualified person must review medical information before clinical use.
-- The project must not claim that a profile is complete or medically correct.
+- The project does not claim that a profile is complete or medically correct.
 
 ## Data rules for development
 
@@ -44,6 +40,7 @@ The app must not present patient-entered or extracted information as clinician-c
 - Treat image or OCR extraction as unverified draft information.
 - Require a person to check medicine names, doses, dates, test values, and instructions.
 - Do not use automatic extraction to make a diagnosis or treatment decision.
+- Do not automatically translate clinical text.
 
 ## Referral summary and QR rules
 
@@ -52,12 +49,21 @@ The app must not present patient-entered or extracted information as clinician-c
 - Do not place private medical information directly inside a QR code.
 - A QR code may contain a non-sensitive reference or local identifier.
 - Show the source and review status of important information.
+- Do not place private medical information or clinical text in application logs.
 
 ## Interface notice
 
 Show this notice when the CLI starts. Show the same notice in the future web interface:
 
-> **DEVELOPMENT VERSION — Use fictional data only. Do not enter real patient or medical information.**
+> **DEVELOPMENT VERSION - Use fictional data only. Do not enter real patient or medical information.**
+
+## Bug reports
+
+Report a bug in the synthetic demonstration through the GitHub repository issue tracker:
+
+<https://github.com/ZK04-alt/sehatraasta/issues>
+
+Do not use the issue tracker to request medical advice or emergency help.
 
 ## Requirements before real-person research
 
