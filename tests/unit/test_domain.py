@@ -1,16 +1,25 @@
-import pytest
 from datetime import date, datetime
+from decimal import Decimal
+
+import pytest
+
 from sehatraasta.domain import (
-    Patient,
+    Attachment,
+    CategoryReview,
+    CostCategory,
+    CostEntry,
+    DiagnosticResult,
+    Encounter,
+    ImagingItem,
+    InvestigationOrder,
+    InvestigationOrderStatus,
     Language,
+    MedicationItem,
+    Patient,
+    PresenceState,
     ReferralBundle,
     ReferralStatus,
-    MedicationItem,
-    Encounter,
-    Attachment,
-    InvestigationOrder,
-    DiagnosticResult,
-    ImagingItem,
+    ReviewCategory,
 )
 
 
@@ -80,6 +89,11 @@ def test_values():
     assert patient.name == "zunair"
     assert patient.language == Language.ENGLISH
     assert patient.birth_year == 2008
+
+
+def test_patient_accepts_structured_id():
+    patient = Patient("SR-DEMO-001", "Amina Demo", 1980, Language.URDU)
+    assert patient.ID == "SR-DEMO-001"
 
 
 def test_ref_values():
@@ -259,7 +273,7 @@ def _make_test_order(order_date):
         "Complete blood count",
         order_date,
         "Synthetic Clinic",
-        "ordered",
+        InvestigationOrderStatus.ORDERED,
     )
 
 
@@ -375,3 +389,191 @@ def test_bundle_rejects_duplicate_attachment_id():
 
     with pytest.raises(ValueError, match="duplicate attachment ID"):
         bundle.add_attachment(second_attachment)
+
+
+def test_order_rejects_plain_string_status():
+    with pytest.raises(
+        ValueError,
+        match="unknown investigation order status",
+    ):
+        InvestigationOrder(
+            "X-ray",
+            date(2026, 8, 30),
+            "Synthetic Clinic",
+            "ordered",
+        )
+
+
+def test_valid_category_review():
+    review_time = datetime(2026, 8, 30, 12, 0)
+
+    review = CategoryReview(
+        ReviewCategory.MEDICATION_LIST,
+        PresenceState.PRESENT,
+        "Medication list reviewed",
+        review_time,
+        "Synthetic review",
+    )
+
+    assert review.category == ReviewCategory.MEDICATION_LIST
+    assert review.state == PresenceState.PRESENT
+
+
+def test_category_review_rejects_plain_string_category():
+    with pytest.raises(ValueError, match="unknown review category"):
+        CategoryReview(
+            "medication list",
+            PresenceState.PRESENT,
+            "Medication list reviewed",
+            datetime(2026, 8, 30, 12, 0),
+            "Synthetic review",
+        )
+
+
+def test_valid_cost_entry_stores_exact_amount_and_source():
+    entry = CostEntry(
+        "CO-001",
+        CostCategory.TRAVEL,
+        Decimal("2500.00"),
+        date(2026, 8, 30),
+        "demo interview response",
+    )
+
+    assert entry.ID == "CO-001"
+    assert entry.category == CostCategory.TRAVEL
+    assert entry.amount == Decimal("2500.00")
+    assert isinstance(entry.amount, Decimal)
+    assert entry.source == "demo interview response"
+    assert entry.note == ""
+
+
+def test_cost_entry_rejects_float_amount():
+    with pytest.raises(ValueError, match="invalid amount"):
+        CostEntry(
+            "CO-001",
+            CostCategory.TRAVEL,
+            2500.0,
+            date(2026, 8, 30),
+            "demo interview response",
+        )
+
+
+def test_cost_entry_rejects_zero_amount():
+    with pytest.raises(ValueError, match="invalid amount"):
+        CostEntry(
+            "CO-001",
+            CostCategory.TRAVEL,
+            Decimal("0"),
+            date(2026, 8, 30),
+            "demo interview response",
+        )
+
+
+def test_cost_entry_rejects_negative_amount():
+    with pytest.raises(ValueError, match="invalid amount"):
+        CostEntry(
+            "CO-001",
+            CostCategory.TRAVEL,
+            Decimal("-1"),
+            date(2026, 8, 30),
+            "demo interview response",
+        )
+
+
+def test_cost_entry_rejects_non_finite_amount():
+    with pytest.raises(ValueError, match="invalid amount"):
+        CostEntry(
+            "CO-001",
+            CostCategory.TRAVEL,
+            Decimal("NaN"),
+            date(2026, 8, 30),
+            "demo interview response",
+        )
+
+
+def test_cost_entry_rejects_missing_source():
+    with pytest.raises(ValueError, match="missing source"):
+        CostEntry(
+            "CO-001",
+            CostCategory.TRAVEL,
+            Decimal("2500.00"),
+            date(2026, 8, 30),
+            "",
+        )
+
+
+def test_cost_entry_rejects_unsupported_category():
+    with pytest.raises(ValueError, match="unsupported cost category"):
+        CostEntry(
+            "CO-001",
+            "travel",
+            Decimal("2500.00"),
+            date(2026, 8, 30),
+            "demo interview response",
+        )
+
+
+def test_cost_entry_rejects_non_string_note():
+    with pytest.raises(ValueError, match="invalid note"):
+        CostEntry(
+            "CO-001",
+            CostCategory.TRAVEL,
+            Decimal("2500.00"),
+            date(2026, 8, 30),
+            "demo interview response",
+            123,
+        )
+
+
+def test_empty_bundle_has_exact_zero_cost():
+    bundle = _make_test_bundle()
+
+    assert bundle.total_cost_pkr() == Decimal("0")
+    assert isinstance(bundle.total_cost_pkr(), Decimal)
+
+
+def test_bundle_total_uses_exact_stored_cost_values():
+    bundle = _make_test_bundle()
+    travel = CostEntry(
+        "CO-001",
+        CostCategory.TRAVEL,
+        Decimal("2500.00"),
+        date(2026, 8, 30),
+        "demo interview response",
+    )
+    medication = CostEntry(
+        "CO-002",
+        CostCategory.MEDICATION,
+        Decimal("1250.75"),
+        date(2026, 8, 30),
+        "synthetic receipt",
+    )
+
+    bundle.add_cost_entry(travel)
+    bundle.add_cost_entry(medication)
+
+    assert bundle.cost_entries == [travel, medication]
+    assert bundle.total_cost_pkr() == Decimal("3750.75")
+
+
+def test_bundle_rejects_duplicate_cost_entry_id():
+    bundle = _make_test_bundle()
+    first = CostEntry(
+        "CO-001",
+        CostCategory.TRAVEL,
+        Decimal("2500.00"),
+        date(2026, 8, 30),
+        "demo interview response",
+    )
+    duplicate = CostEntry(
+        "CO-001",
+        CostCategory.MEDICATION,
+        Decimal("500.00"),
+        date(2026, 8, 30),
+        "synthetic receipt",
+    )
+
+    bundle.add_cost_entry(first)
+
+    with pytest.raises(ValueError, match="duplicate cost entry ID"):
+        bundle.add_cost_entry(duplicate)

@@ -1,8 +1,17 @@
 from dataclasses import dataclass, field
 from datetime import date, datetime
+from decimal import Decimal
 import re
 
-from .enums import Language, PresenceState, ReferralStatus
+from .enums import (
+    CostCategory,
+    InvestigationOrderStatus,
+    Language,
+    PresenceState,
+    ReferralStatus,
+    ReviewCategory,
+)
+from .validation import validate_id
 
 
 @dataclass
@@ -175,7 +184,7 @@ class InvestigationOrder:
     name: str
     date: date
     source: str
-    workflow_status: str
+    workflow_status: InvestigationOrderStatus
 
     def checks(self):
         if not isinstance(self.name, str):
@@ -190,10 +199,10 @@ class InvestigationOrder:
             raise ValueError("invalid source")
         if not self.source.strip():
             raise ValueError("missing source")
-        if not isinstance(self.workflow_status, str):
-            raise ValueError("invalid workflow status")
-        if not self.workflow_status.strip():
-            raise ValueError("missing workflow status")
+        if not isinstance(self.workflow_status, InvestigationOrderStatus):
+            raise ValueError("unknown investigation order status")
+        if not self.workflow_status:
+            raise ValueError("missing investigation order status")
 
     def __post_init__(self):
         self.checks()
@@ -243,17 +252,15 @@ class DiagnosticResult:
 
 @dataclass
 class CategoryReview:
-    category: str
+    category: ReviewCategory
     state: PresenceState
     text: str
     time: datetime
     note: str
 
     def checks(self):
-        if not isinstance(self.category, str):
-            raise ValueError("invalid category")
-        if not self.category.strip():
-            raise ValueError("missing category")
+        if not isinstance(self.category, ReviewCategory):
+            raise ValueError("unknown review category")
         if not isinstance(self.state, PresenceState):
             raise ValueError("unknown presence state")
         if not isinstance(self.text, str):
@@ -326,20 +333,20 @@ class Attachment:
 
 @dataclass
 class CostEntry:
-    category: str
-    amount: int
-    date: date
-    cost_type: str
     ID: str
-    label: str
-    note: str
+    category: CostCategory
+    amount: Decimal
+    date: date
+    source: str
+    note: str = ""
 
     def checks(self):
-        if not isinstance(self.category, str):
-            raise ValueError("invalid category")
-        if not self.category.strip():
-            raise ValueError("missing category")
-        if isinstance(self.amount, bool) or not isinstance(self.amount, int):
+        validate_id(self.ID)
+        if not isinstance(self.category, CostCategory):
+            raise ValueError("unsupported cost category")
+        if isinstance(self.amount, bool) or not isinstance(self.amount, Decimal):
+            raise ValueError("invalid amount")
+        if not self.amount.is_finite():
             raise ValueError("invalid amount")
         if self.amount <= 0:
             raise ValueError("invalid amount")
@@ -347,24 +354,12 @@ class CostEntry:
             raise ValueError("invalid date")
         if not isinstance(self.date, date):
             raise ValueError("invalid date")
-        if not isinstance(self.cost_type, str):
-            raise ValueError("invalid cost type")
-        if not self.cost_type.strip():
-            raise ValueError("missing cost type")
-        if not isinstance(self.ID, str):
-            raise ValueError("invalid ID")
-        if not self.ID.strip():
-            raise ValueError("missing ID")
-        if not re.fullmatch(r"[A-Z]{2}-\d{3}", self.ID):
-            raise ValueError("invalid ID")
-        if not isinstance(self.label, str):
-            raise ValueError("invalid label")
-        if not self.label.strip():
-            raise ValueError("missing label")
+        if not isinstance(self.source, str):
+            raise ValueError("invalid source")
+        if not self.source.strip():
+            raise ValueError("missing source")
         if not isinstance(self.note, str):
             raise ValueError("invalid note")
-        if not self.note.strip():
-            raise ValueError("missing note")
 
     def __post_init__(self):
         self.checks()
@@ -433,12 +428,8 @@ class ReferralBundle:
         return len(ids) != len(set(ids))
 
     def checks(self):
-        if not isinstance(self.ID, str):
-            raise ValueError("invalid ID")
-        if not self.ID.strip():
-            raise ValueError("missing ID")
-        if not re.fullmatch(r"[A-Z]{2}-\d{3}", self.ID):
-            raise ValueError("invalid ID")
+        validate_id(self.ID)
+
         if not isinstance(self.creation_time, datetime):
             raise ValueError("invalid creation time")
         if not isinstance(self.source_facility, str):
@@ -554,6 +545,12 @@ class ReferralBundle:
             raise ValueError("duplicate cost entry ID")
         self.cost_entries.append(cost_entry)
 
+    def total_cost_pkr(self) -> Decimal:
+        return sum(
+            (cost_entry.amount for cost_entry in self.cost_entries),
+            Decimal("0"),
+        )
+
     def add_attachment(self, attachment):
         if not isinstance(attachment, Attachment):
             raise ValueError("invalid attachment")
@@ -609,18 +606,13 @@ class Patient:
     def checks(self):
         if not isinstance(self.name, str) or self.name.isnumeric():
             raise ValueError("invalid name")
-        if not isinstance(self.ID, str):
-            raise ValueError("invalid ID")
-        if not self.ID.strip():
-            raise ValueError("missing ID")
+        validate_id(self.ID)
         if not self.name.strip():
             raise ValueError("missing name")
         if not isinstance(self.birth_year, int) or isinstance(self.birth_year, bool):
             raise ValueError("birth year must be a number")
         if self.birth_year <= 0:
             raise ValueError("invalid birth year")
-        if not re.fullmatch(r"[A-Z]{2}-\d{3}", self.ID):
-            raise ValueError("invalid ID")
         if not isinstance(self.language, Language) or self.language not in [
             Language.ENGLISH,
             Language.URDU,
