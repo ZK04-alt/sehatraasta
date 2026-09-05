@@ -27,8 +27,8 @@ from sehatraasta.domain import (
 )
 
 
-class StorageError(Exception):
-    pass
+from .errors import StorageError
+from .interfaces import PatientRepository
 
 
 def medication_to_dict(item):
@@ -113,6 +113,7 @@ def bundle_to_dict(bundle):
                 "date": item.date.isoformat(),
                 "source": item.source,
                 "size": item.size,
+                "generated_stored_name": item.generated_stored_name,
             }
             for item in bundle.attachments
         ],
@@ -133,6 +134,9 @@ def bundle_to_dict(bundle):
                 "ID": item.ID,
                 "category": item.category.name,
                 "amount_pkr": str(item.amount),
+                "source_type": item.source_type,
+                "source_identifier": item.source_identifier,
+                "reported_by_label": item.reported_by_label,
                 "date": item.date.isoformat(),
                 "source": item.source,
                 "note": item.note,
@@ -197,6 +201,7 @@ def _bundle_from_dict(data):
             date.fromisoformat(item["date"]),
             item["source"],
             item["size"],
+            item.get("generated_stored_name", ""),
         )
         for item in data.get("attachments", [])
     ]
@@ -280,6 +285,9 @@ def _bundle_from_dict(data):
                 date.fromisoformat(item["date"]),
                 item["source"],
                 item.get("note", ""),
+                item.get("source_type", "reported"),
+                item.get("source_identifier"),
+                item.get("reported_by_label", ""),
             )
             for item in data.get("cost_entries", [])
         ],
@@ -338,7 +346,7 @@ def write_json_safely(path, payload):
             shutil.copy2(target, backup)
 
         os.replace(temporary, target)
-    except (OSError, TypeError, json.JSONDecodeError) as error:
+    except (OSError, TypeError, UnicodeError, json.JSONDecodeError) as error:
         if temporary.exists():
             temporary.unlink()
         raise StorageError("could not safely write development file") from error
@@ -346,7 +354,7 @@ def write_json_safely(path, payload):
     return target
 
 
-class JsonRepository:
+class JsonRepository(PatientRepository):
     def __init__(self, path):
         self.path = Path(path)
         self.patients = self._load_patients()

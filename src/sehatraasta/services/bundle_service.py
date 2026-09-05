@@ -194,9 +194,11 @@ class BundleService:
         cost_date,
         source,
         note="",
+        source_type="reported",
+        source_identifier=None,
     ):
         patient, bundle = self.get_bundle_owner(bundle_id)
-        entry = CostEntry(ID, category, amount, cost_date, source, note)
+        entry = CostEntry(ID, category, amount, cost_date, source, note, source_type, source_identifier)
         bundle.add_cost_entry(entry)
         self._save_bundle(patient)
         return entry
@@ -235,3 +237,12 @@ class BundleService:
 
     def total_cost_pkr(self, bundle_id):
         return self.get_bundle(bundle_id).total_cost_pkr()
+
+    def update_bundle(self, bundle_id, source_facility, destination, status):
+        patient, bundle = self.get_bundle_owner(bundle_id)
+        bundle.source_facility = source_facility
+        bundle.destination = destination
+        bundle.status = status
+        bundle.checks()
+        self.repository.save_patient(patient)
+        return bundle

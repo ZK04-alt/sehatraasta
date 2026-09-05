@@ -139,7 +139,7 @@ class ImagingItem:
     facility: str
     report: str
     ID: str
-    Attachment_ID: str
+    Attachment_ID: str | None
 
     def checks(self):
         if not isinstance(self.modality, str):
@@ -168,6 +168,8 @@ class ImagingItem:
             raise ValueError("missing ID")
         if not re.fullmatch(r"[A-Z]{2}-\d{3}", self.ID):
             raise ValueError("invalid ID")
+        if self.Attachment_ID is None:
+            return
         if not isinstance(self.Attachment_ID, str):
             raise ValueError("invalid attachment ID")
         if not self.Attachment_ID.strip():
@@ -288,10 +290,13 @@ class Attachment:
     date: date
     source: str
     size: float
+    generated_stored_name: str = ""
 
     _ALLOWED_MIME_TYPES = {"application/pdf", "image/jpeg", "image/png"}
 
     def checks(self):
+        if not isinstance(self.generated_stored_name, str):
+            raise ValueError("invalid stored name")
         if not isinstance(self.ID, str):
             raise ValueError("invalid ID")
         if not self.ID.strip():
@@ -339,8 +344,13 @@ class CostEntry:
     date: date
     source: str
     note: str = ""
+    source_type: str = "reported"
+    source_identifier: str | None = None
+    reported_by_label: str = ""
 
     def checks(self):
+        if not isinstance(self.reported_by_label, str):
+            raise ValueError("invalid reported-by label")
         validate_id(self.ID)
         if not isinstance(self.category, CostCategory):
             raise ValueError("unsupported cost category")
@@ -358,6 +368,12 @@ class CostEntry:
             raise ValueError("invalid source")
         if not self.source.strip():
             raise ValueError("missing source")
+        if self.source_identifier is None:
+            self.source_identifier = self.source
+        if not isinstance(self.source_type, str) or not self.source_type.strip():
+            raise ValueError("missing source type")
+        if not isinstance(self.source_identifier, str) or not self.source_identifier.strip():
+            raise ValueError("missing source identifier")
         if not isinstance(self.note, str):
             raise ValueError("invalid note")
 
@@ -500,7 +516,7 @@ class ReferralBundle:
         if self._has_duplicate_ids(self.diagnostic_results):
             raise ValueError("duplicate diagnostic result ID")
         attachment_ids = [a.ID for a in self.attachments]
-        if any(item.Attachment_ID not in attachment_ids for item in self.imaging_items):
+        if any(item.Attachment_ID is not None and item.Attachment_ID not in attachment_ids for item in self.imaging_items):
             raise ValueError("attachment not found in bundle")
         if any(
             item.investigation_order is not None
@@ -534,7 +550,7 @@ class ReferralBundle:
             raise ValueError("invalid imaging item")
         if imaging_item.ID in [item.ID for item in self.imaging_items]:
             raise ValueError("duplicate imaging item ID")
-        if imaging_item.Attachment_ID not in [item.ID for item in self.attachments]:
+        if imaging_item.Attachment_ID is not None and imaging_item.Attachment_ID not in [item.ID for item in self.attachments]:
             raise ValueError("attachment not found in bundle")
         self.imaging_items.append(imaging_item)
 

@@ -19,13 +19,14 @@ from sehatraasta.services import (
     ExportService,
     SYNTHETIC_WARNING,
 )
-from sehatraasta.storage import JsonRepository, StorageError
+from sehatraasta.storage import SQLiteRepository, StorageError
+from sehatraasta.services.database_service import DatabaseService
 
 
 EXIT_SUCCESS = 0
 EXIT_VALIDATION_FAILURE = 2
 EXIT_STORAGE_FAILURE = 3
-DEFAULT_DATA_FILE = Path("instance") / "sehatraasta-development.json"
+DEFAULT_DATA_FILE = Path("instance") / "sehatraasta.sqlite"
 
 
 def _add_argument(parser, name, help_text):
@@ -43,9 +44,9 @@ def build_parser():
         ),
     )
     parser.add_argument(
-        "--data-file",
+        "--data-file", "--database",
         default=str(DEFAULT_DATA_FILE),
-        help="Path to the synthetic JSON development file.",
+        help="Path to the synthetic SQLite database (old JSON files are preserved).",
     )
     commands = parser.add_subparsers(dest="command", required=True)
 
@@ -62,6 +63,16 @@ def build_parser():
     _add_argument(create_bundle, "--source", "Source facility text.")
     _add_argument(create_bundle, "--destination", "Referral destination text.")
     create_bundle.add_argument("--status", default="draft")
+
+    update_bundle = commands.add_parser("update-bundle")
+    for name in ("--bundle-id", "--source", "--destination", "--status"):
+        _add_argument(update_bundle, name, name[2:].replace("-", " "))
+    commands.add_parser("init-db")
+    backup = commands.add_parser("backup-db")
+    _add_argument(backup, "--output", "New backup database path.")
+    restore = commands.add_parser("restore-db")
+    _add_argument(restore, "--backup", "Existing backup database path.")
+    _add_argument(restore, "--output", "New restored database path; existing files are preserved.")
 
     medication = commands.add_parser("add-medication")
     for name in (
@@ -143,6 +154,8 @@ def build_parser():
     ):
         _add_argument(cost, name, name[2:].replace("-", " "))
     cost.add_argument("--note", default="")
+    cost.add_argument("--source-type", default="reported")
+    cost.add_argument("--source-identifier", help="Source reference; defaults to the supplied source text.")
 
     review = commands.add_parser("set-review")
     for name in (
@@ -370,6 +383,8 @@ def _run_command(args, bundle_service, attachment_service, completeness, exporte
             _date_value(args.date),
             args.source,
             args.note,
+            args.source_type,
+            args.source_identifier,
         )
         print("Added cost entry")
 
@@ -409,6 +424,13 @@ def _run_command(args, bundle_service, attachment_service, completeness, exporte
         output = exporter.export_bundle(args.bundle_id, args.output)
         print(f"Exported {output}")
 
+    elif args.command == "update-bundle":
+        bundle_service.update_bundle(
+            args.bundle_id, args.source, args.destination,
+            _enum_value(ReferralStatus, args.status, "unknown referral status"),
+        )
+        print("Updated referral bundle")
+
 
 def main(argv=None):
     parser = build_parser()
@@ -418,7 +440,17 @@ def main(argv=None):
         return int(error.code)
 
     try:
-        repository = JsonRepository(args.data_file)
+        maintenance = DatabaseService(args.data_file)
+        if args.command == "restore-db":
+            print(f"Restored {maintenance.restore(args.backup, args.output)}")
+            return EXIT_SUCCESS
+        if args.command == "backup-db":
+            print(f"Backup created: {maintenance.backup(args.output)}")
+            return EXIT_SUCCESS
+        repository = SQLiteRepository(args.data_file)
+        if args.command == "init-db":
+            print("Database initialized")
+            return EXIT_SUCCESS
         bundle_service = BundleService(repository)
         attachment_service = AttachmentService(bundle_service)
         completeness = CompletenessService()
