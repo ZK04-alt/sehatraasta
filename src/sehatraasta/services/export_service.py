@@ -17,6 +17,14 @@ class ExportService:
         self.completeness_service = CompletenessService()
 
     def export_bundle(self, bundle_id, output_path):
+        target = Path(output_path).resolve()
+        database = Path(self.bundle_service.repository.path).resolve()
+        same_file = target.exists() and database.exists() and target.samefile(database)
+        if same_file or target == database or database in (
+            target.with_name(target.name + ".tmp"),
+            target.with_name(target.name + ".bak"),
+        ):
+            raise ValueError("export path must be separate from the database")
         patient, bundle = self.bundle_service.get_bundle_owner(bundle_id)
         groups = self.completeness_service.group_categories(bundle)
         completeness = {
