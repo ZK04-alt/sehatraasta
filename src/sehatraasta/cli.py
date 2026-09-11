@@ -3,6 +3,7 @@ from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 import sys
+import sqlite3
 
 from sehatraasta.domain import (
     CostCategory,
@@ -21,6 +22,8 @@ from sehatraasta.services import (
 )
 from sehatraasta.storage import SQLiteRepository, StorageError
 from sehatraasta.services.database_service import DatabaseService
+from sehatraasta.phase_commands import add_commands, run_command, restore_command
+from sehatraasta.storage.errors import log_storage_error
 
 
 EXIT_SUCCESS = 0
@@ -49,6 +52,7 @@ def build_parser():
         help="Path to the synthetic SQLite database (old JSON files are preserved).",
     )
     commands = parser.add_subparsers(dest="command", required=True)
+    add_commands(commands)
 
     create_patient = commands.add_parser("create-patient")
     _add_argument(create_patient, "--id", "Fictional patient ID.")
@@ -85,15 +89,15 @@ def build_parser():
         "--frequency",
         "--duration",
         "--instructions",
-        "--source",
     ):
         _add_argument(medication, name, name[2:].replace("-", " "))
+    medication.add_argument("--source", default="source not supplied")
 
     order = commands.add_parser("add-order")
     _add_argument(order, "--bundle-id", "Referral-bundle ID.")
     _add_argument(order, "--name", "Ordered test name.")
     _add_argument(order, "--date", "Order date in YYYY-MM-DD format.")
-    _add_argument(order, "--source", "Ordering source text.")
+    order.add_argument("--source", default="source not supplied")
     _add_argument(order, "--status", "ordered, completed, or cancelled.")
 
     result = commands.add_parser("add-result")
@@ -101,7 +105,7 @@ def build_parser():
     _add_argument(result, "--id", "Result ID.")
     _add_argument(result, "--name", "Result name.")
     _add_argument(result, "--date", "Result date in YYYY-MM-DD format.")
-    _add_argument(result, "--source", "Result source text.")
+    result.add_argument("--source", default="source not supplied")
     _add_argument(result, "--interpretation", "Verbatim fictional result text.")
     result.add_argument("--order-name")
 
@@ -138,10 +142,10 @@ def build_parser():
         "--category",
         "--language",
         "--text",
-        "--source",
         "--date",
     ):
         _add_argument(instruction, name, name[2:].replace("-", " "))
+    instruction.add_argument("--source", default="source not supplied")
 
     cost = commands.add_parser("add-cost")
     for name in (
@@ -440,6 +444,9 @@ def main(argv=None):
         return int(error.code)
 
     try:
+        if args.command == "restore-dataset":
+            restore_command(args)
+            return EXIT_SUCCESS
         maintenance = DatabaseService(args.data_file)
         if args.command == "restore-db":
             print(f"Restored {maintenance.restore(args.backup, args.output)}")
@@ -452,6 +459,8 @@ def main(argv=None):
             print("Database initialized")
             return EXIT_SUCCESS
         bundle_service = BundleService(repository)
+        if run_command(args, bundle_service):
+            return EXIT_SUCCESS
         attachment_service = AttachmentService(bundle_service)
         completeness = CompletenessService()
         exporter = ExportService(bundle_service)
@@ -465,6 +474,10 @@ def main(argv=None):
         return EXIT_SUCCESS
     except StorageError as error:
         print(f"Storage error: {error}", file=sys.stderr)
+        return EXIT_STORAGE_FAILURE
+    except (OSError, sqlite3.Error) as error:
+        log_storage_error(args.data_file, "cli_operation", error)
+        print("Storage error: operation failed; no internal paths are displayed", file=sys.stderr)
         return EXIT_STORAGE_FAILURE
     except (TypeError, ValueError) as error:
         print(f"Validation error: {error}", file=sys.stderr)

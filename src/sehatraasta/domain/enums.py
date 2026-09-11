@@ -45,3 +45,21 @@ class ReviewCategory(Enum):
     INSTRUCTIONS = "instructions"
     ATTACHMENTS = "attachments"
     COSTS = "costs"
+
+
+class AttachmentCategory(Enum):
+    REFERRAL_LETTER = "referral letter"
+    PRESCRIPTION = "prescription"
+    MEDICATION_LIST = "medication list"
+    INVESTIGATION_ORDER = "investigation order"
+    DIAGNOSTIC_RESULT = "diagnostic result"
+    IMAGING_REPORT = "imaging report"
+    IMAGING_IMAGE = "imaging image"
+    INSTRUCTION = "instruction"
+    OTHER = "other"
+
+
+class ProvenanceType(Enum):
+    DOCUMENT = "document"
+    REPORTED = "reported"
+    NOT_SUPPLIED = "not supplied"

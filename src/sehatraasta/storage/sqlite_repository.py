@@ -48,6 +48,24 @@ class SQLiteRepository(PatientRepository):
         try:
             with connection:
                 connection.execute("BEGIN IMMEDIATE")
+                for bundle in patient.referrals:
+                    for item in bundle.attachments:
+                        saved = connection.execute("SELECT a.* FROM attachments a JOIN managed_attachments m USING(attachment_id) WHERE a.attachment_id = ?", (item.ID,)).fetchone()
+                        if saved is not None:
+                            supplied = (item.ID, bundle.ID, item.category, item.name, item.generated_stored_name, item.MIME_type, item.size, item.sha, item.date.isoformat(), item.source)
+                            if tuple(saved) != supplied:
+                                raise ValueError("stored attachment metadata cannot be edited directly")
+                next_order = connection.execute("SELECT COALESCE(MAX(order_id), 0) FROM investigation_orders").fetchone()[0]
+                next_instruction = connection.execute("SELECT COALESCE(MAX(instruction_id), 0) FROM instructions").fetchone()[0]
+                for bundle in patient.referrals:
+                    for item in bundle.investigation_orders:
+                        if getattr(item, "_storage_id", None) is None:
+                            next_order += 1
+                            item._storage_id = next_order
+                    for item in bundle.instructions:
+                        if getattr(item, "_storage_id", None) is None:
+                            next_instruction += 1
+                            item._storage_id = next_instruction
                 if adding:
                     connection.execute(
                         "INSERT INTO patients (patient_id, display_name, birth_year, language) VALUES (?, ?, ?, ?)",
@@ -100,11 +118,14 @@ class SQLiteRepository(PatientRepository):
         for item in bundle.instructions:
             item.checks()
             connection.execute(
-                "INSERT INTO instructions (bundle_id, category, language, verbatim_text, author_source, date) VALUES (?, ?, ?, ?, ?, ?)",
-                (bundle.ID, item.category, item.language.name, item.text, item.source, item.date.isoformat()),
+                "INSERT INTO instructions (instruction_id, bundle_id, category, language, verbatim_text, author_source, date) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (getattr(item, "_storage_id", None), bundle.ID, item.category, item.language.name, item.text, item.source, item.date.isoformat()),
             )
         for item in bundle.attachments:
             item.checks()
+            managed = connection.execute("SELECT stored_name, sha256 FROM managed_attachments WHERE attachment_id = ?", (item.ID,)).fetchone()
+            if managed is not None and tuple(managed) != (item.generated_stored_name, item.sha):
+                raise ValueError("stored attachment cannot be replaced by a metadata edit")
             if not float(item.size).is_integer() or item.size > 9223372036854775807:
                 raise ValueError("attachment size must be whole bytes within the storage limit")
             connection.execute(
@@ -139,8 +160,8 @@ class SQLiteRepository(PatientRepository):
         for item in bundle.investigation_orders:
             item.checks()
             cursor = connection.execute(
-                "INSERT INTO investigation_orders (bundle_id, test_name, order_date, ordering_source, workflow_status) VALUES (?, ?, ?, ?, ?)",
-                (bundle.ID, item.name, item.date.isoformat(), item.source, item.workflow_status.name),
+                "INSERT INTO investigation_orders (order_id, bundle_id, test_name, order_date, ordering_source, workflow_status) VALUES (?, ?, ?, ?, ?, ?)",
+                (getattr(item, "_storage_id", None), bundle.ID, item.name, item.date.isoformat(), item.source, item.workflow_status.name),
             )
             order_ids[id(item)] = cursor.lastrowid
         for item in bundle.diagnostic_results:
@@ -180,6 +201,13 @@ class SQLiteRepository(PatientRepository):
                     "referral_bundles": [self._read_bundle(connection, bundle) for bundle in bundles],
                 }
                 patient = _patient_from_dict(data)
+                for bundle in patient.referrals:
+                    instructions = connection.execute("SELECT instruction_id FROM instructions WHERE bundle_id = ? ORDER BY instruction_id", (bundle.ID,)).fetchall()
+                    orders = connection.execute("SELECT order_id FROM investigation_orders WHERE bundle_id = ? ORDER BY order_id", (bundle.ID,)).fetchall()
+                    for item, saved in zip(bundle.instructions, instructions):
+                        item._storage_id = saved[0]
+                    for item, saved in zip(bundle.investigation_orders, orders):
+                        item._storage_id = saved[0]
                 patient._storage_revision = row["revision"]
                 patients.append(patient)
             return patients
