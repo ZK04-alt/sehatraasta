@@ -297,12 +297,7 @@ class Attachment:
     def checks(self):
         if not isinstance(self.generated_stored_name, str):
             raise ValueError("invalid stored name")
-        if not isinstance(self.ID, str):
-            raise ValueError("invalid ID")
-        if not self.ID.strip():
-            raise ValueError("missing ID")
-        if not re.fullmatch(r"[A-Z]{2}-\d{3}", self.ID):
-            raise ValueError("invalid ID")
+        validate_id(self.ID)
         if not isinstance(self.category, str):
             raise ValueError("invalid category")
         if not self.category.strip():

@@ -74,7 +74,7 @@ def test_initialization_is_repeatable_and_foreign_keys_enabled(tmp_path):
     connection = connect_database(path)
     try:
         assert connection.execute("PRAGMA foreign_keys").fetchone()[0] == 1
-        assert connection.execute("SELECT count(*) FROM schema_version").fetchone()[0] == 1
+        assert [row[0] for row in connection.execute("SELECT version FROM schema_version ORDER BY version")] == [1, 2]
         assert connection.execute("SELECT count(*) FROM patients").fetchone()[0] == 1
         check_database(connection)
     finally:
@@ -234,7 +234,7 @@ def test_future_version_is_rejected_without_reinitialization(tmp_path):
     SQLiteRepository(path).add_patient(make_patient())
     connection = sqlite3.connect(path)
     with connection:
-        connection.execute("UPDATE schema_version SET version = 99")
+        connection.execute("UPDATE schema_version SET version = 99 WHERE version = 2")
     connection.close()
     before = path.read_bytes()
     with pytest.raises(StorageError):

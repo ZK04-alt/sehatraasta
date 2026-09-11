@@ -5,6 +5,8 @@ from .enums import (
     InvestigationOrderStatus,
     CostCategory,
     ReviewCategory,
+    AttachmentCategory,
+    ProvenanceType,
 )
 from .models import (
     Attachment,
@@ -20,6 +22,7 @@ from .models import (
     Patient,
     ReferralBundle,
 )
+from .provenance import Provenance
 
 __all__ = [
     "Attachment",
@@ -40,4 +43,7 @@ __all__ = [
     "InvestigationOrderStatus",
     "CostCategory",
     "ReviewCategory",
+    "AttachmentCategory",
+    "ProvenanceType",
+    "Provenance",
 ]

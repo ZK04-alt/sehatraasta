@@ -7,6 +7,7 @@ from .errors import StorageError, log_storage_error
 
 
 MIGRATION_PATH = Path(__file__).parent / "migrations" / "001_initial.sql"
+ATTACHMENT_MIGRATION = MIGRATION_PATH.with_name("002_attachments.sql")
 TABLE_NAMES = frozenset({
     "schema_version", "patients", "referral_bundles", "audit_events",
     "instructions", "cost_entries", "attachments", "imaging_items",
@@ -37,15 +38,20 @@ def check_database(connection):
     tables = {row[0] for row in connection.execute(
         "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"
     )}
-    if tables != TABLE_NAMES:
-        raise StorageError("unrecognized or incomplete database schema")
     versions = [row[0] for row in connection.execute("SELECT version FROM schema_version")]
-    if versions != [1]:
+    if versions not in ([1], [1, 2]):
         raise StorageError("unsupported database version")
+    expected_tables = TABLE_NAMES
+    if 2 in versions:
+        expected_tables = TABLE_NAMES | {"managed_attachments", "file_audit_events", "bundle_tokens"}
+    if tables != expected_tables:
+        raise StorageError("unrecognized or incomplete database schema")
     # Also reject a database that has the right table names but different columns.
     template = sqlite3.connect(":memory:")
     try:
         template.executescript(MIGRATION_PATH.read_text(encoding="utf-8"))
+        if 2 in versions:
+            template.executescript(ATTACHMENT_MIGRATION.read_text(encoding="utf-8"))
         expected = template.execute(
             "SELECT name, sql FROM sqlite_master WHERE sql IS NOT NULL ORDER BY name"
         ).fetchall()
@@ -53,7 +59,7 @@ def check_database(connection):
             "SELECT name, sql FROM sqlite_master WHERE sql IS NOT NULL ORDER BY name"
         ).fetchall()
         if [tuple(row) for row in actual] != expected:
-            raise StorageError("database schema does not match version 1")
+            raise StorageError("database schema does not match its version")
     finally:
         template.close()
     if [row[0] for row in connection.execute("PRAGMA integrity_check")] != ["ok"]:
@@ -86,6 +92,17 @@ def initialize_database(path):
                 if statement.strip():
                     raise StorageError("incomplete database migration")
             check_database(connection)
+            versions = [row[0] for row in connection.execute("SELECT version FROM schema_version")]
+            if versions == [1]:
+                statement = ""
+                for line in ATTACHMENT_MIGRATION.read_text(encoding="utf-8").splitlines():
+                    statement += line + "\n"
+                    if sqlite3.complete_statement(statement):
+                        sql = statement.strip()
+                        if sql not in ("BEGIN TRANSACTION;", "COMMIT;"):
+                            connection.execute(sql)
+                        statement = ""
+                check_database(connection)
     except (OSError, sqlite3.Error, StorageError) as error:
         log_storage_error(path, "initialize", error)
         raise StorageError("could not initialize database; existing data was preserved") from error

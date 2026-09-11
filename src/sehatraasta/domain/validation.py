@@ -1,5 +1,7 @@
 import re
 
+from .enums import AttachmentCategory
+
 
 def validate_id(ID):
 
@@ -12,3 +14,8 @@ def validate_id(ID):
         r"[A-Z]{2}-[A-Z]{2,20}-\d{3}", ID
     ):
         raise ValueError("invalid ID")
+
+
+def validate_attachment_category(category):
+    if not isinstance(category, AttachmentCategory):
+        raise ValueError("unsupported attachment category")
