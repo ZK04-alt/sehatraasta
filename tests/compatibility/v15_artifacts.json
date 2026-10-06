@@ -1,0 +1,601 @@
+{
+  "source_commit": "0b29581c0df6ea0cdcbeef9d6f0a71148816387f",
+  "baseline_apk_sha256": "5ec0fd925def500fb7250234e54f22f2fecaf207d68c2918fc7ee7fb6c8631f0",
+  "migrations": {
+    "001_initial.sql": "950c5c307afe39a8ed49e2dc5909ba9f2293d2c67382f5411be2f4a197e13ae6",
+    "002_attachments.sql": "9fba819a38582e70ebabcd0797a04d5aa12a860a4b1274e345fed43835fdc319",
+    "003_passport.sql": "5e879cc67ccf4dabac3354ba96a614e7c96f003c15c8d9fb60676a24cc52749c",
+    "004_unfinished_visits.sql": "3660985387d194cff1d2fc8d9df56785be27c13ba40f76e20188a4b2079c90fb"
+  },
+  "backup": {
+    "manifest.json": {
+      "dataset.json": "e0cfb2780e9528e58f515e9cf1e3fe3a0517cf616092af693a1856ec8120af45",
+      "attachments/da01fcc4c5164260933f1b847bacbb94.png": "6b1048f8a6d40bac0b2954c18fefa40c4ea7a96120fc2e54b7317c0e43c2bbec"
+    },
+    "dataset.json": {
+      "version": 2,
+      "synthetic_only": true,
+      "tables": {
+        "schema_version": [
+          {
+            "version": 1,
+            "applied_at": "2026-10-06 20:57:22"
+          },
+          {
+            "version": 2,
+            "applied_at": "2026-10-06 20:57:22"
+          },
+          {
+            "version": 3,
+            "applied_at": "2026-10-06 20:57:23"
+          },
+          {
+            "version": 4,
+            "applied_at": "2026-10-06 20:57:23"
+          }
+        ],
+        "patients": [
+          {
+            "patient_id": "PK-001",
+            "display_name": "Amina Fictional Legacy",
+            "birth_year": 1980,
+            "revision": 10,
+            "language": "URDU"
+          },
+          {
+            "patient_id": "PK-002",
+            "display_name": "Family Fictional Legacy",
+            "birth_year": 1990,
+            "revision": 0,
+            "language": "ENGLISH"
+          }
+        ],
+        "referral_bundles": [
+          {
+            "bundle_id": "RB-001",
+            "patient_id": "PK-001",
+            "creation_time": "2026-09-12T12:34:00",
+            "source_facility": "Fictional legacy clinic",
+            "destination": "",
+            "referral_status": "DRAFT"
+          },
+          {
+            "bundle_id": "RB-002",
+            "patient_id": "PK-001",
+            "creation_time": "2026-09-19T09:00:00",
+            "source_facility": "Fictional later clinic",
+            "destination": "Fictional hospital",
+            "referral_status": "DRAFT"
+          }
+        ],
+        "encounters": [],
+        "medication_items": [
+          {
+            "medication_id": "MD-001",
+            "bundle_id": "RB-001",
+            "verbatim_name": "Fictional medicine",
+            "strength": "10 mg",
+            "dose_text": "1 tablet",
+            "route_text": "",
+            "frequency_text": "As supplied",
+            "duration_text": "As supplied",
+            "instructions": "",
+            "source": "source not supplied"
+          }
+        ],
+        "instructions": [
+          {
+            "instruction_id": 1,
+            "bundle_id": "RB-001",
+            "category": "Fictional instruction",
+            "language": "ENGLISH",
+            "verbatim_text": "Fictional text only",
+            "author_source": "source not supplied",
+            "date": "2026-09-12"
+          }
+        ],
+        "attachments": [
+          {
+            "attachment_id": "AT-001",
+            "bundle_id": "RB-001",
+            "category": "other",
+            "original_display_name": "fictional-original.png",
+            "generated_stored_name": "da01fcc4c5164260933f1b847bacbb94.png",
+            "mime_type": "image/png",
+            "size_bytes": 68,
+            "sha256": "6b1048f8a6d40bac0b2954c18fefa40c4ea7a96120fc2e54b7317c0e43c2bbec",
+            "date": "2026-09-12",
+            "source": "source not supplied"
+          }
+        ],
+        "investigation_orders": [
+          {
+            "order_id": 1,
+            "bundle_id": "RB-001",
+            "test_name": "Fictional test",
+            "order_date": "2026-09-12",
+            "ordering_source": "source not supplied",
+            "workflow_status": "ORDERED"
+          }
+        ],
+        "diagnostic_results": [
+          {
+            "result_id": "RS-001",
+            "bundle_id": "RB-001",
+            "investigation_order_id": 1,
+            "test_name": "Fictional result",
+            "result_date": "2026-09-12",
+            "source_summary": "source not supplied",
+            "interpretation_note": "Fictional supplied text"
+          }
+        ],
+        "imaging_items": [
+          {
+            "imaging_id": "IM-001",
+            "bundle_id": "RB-001",
+            "attachment_id": null,
+            "modality": "X-ray",
+            "body_part": "Fictional part",
+            "date": "2026-09-12",
+            "facility": "Fictional clinic",
+            "report": "Fictional report"
+          }
+        ],
+        "cost_entries": [
+          {
+            "cost_entry_id": "CO-001",
+            "bundle_id": "RB-001",
+            "category": "TRAVEL",
+            "amount_paisa": 2510,
+            "date": "2026-09-12",
+            "source": "Fictional supplied source",
+            "source_type": "not supplied",
+            "source_identifier": "Fictional supplied source",
+            "reported_by_label": "",
+            "note": ""
+          }
+        ],
+        "category_reviews": [],
+        "audit_events": [
+          {
+            "audit_event_id": 1,
+            "bundle_id": "RB-001",
+            "timestamp": "2026-10-06T20:57:23.274479+00:00",
+            "action": "update context",
+            "entity_type": "referral",
+            "entity_id": "RB-001",
+            "actor_label": "device user",
+            "result": "success"
+          }
+        ],
+        "managed_attachments": [
+          {
+            "attachment_id": "AT-001",
+            "bundle_id": "RB-001",
+            "stored_name": "da01fcc4c5164260933f1b847bacbb94.png",
+            "sha256": "6b1048f8a6d40bac0b2954c18fefa40c4ea7a96120fc2e54b7317c0e43c2bbec",
+            "category": "other",
+            "source_type": "not supplied",
+            "source_identifier": null,
+            "order_id": null,
+            "result_id": null,
+            "imaging_id": null,
+            "instruction_id": null,
+            "medication_list": 0
+          }
+        ],
+        "file_audit_events": [
+          {
+            "event_id": 1,
+            "bundle_id": "RB-001",
+            "attachment_id": "AT-001",
+            "occurred_at": "2026-10-06 20:57:23",
+            "action": "import",
+            "outcome": "success"
+          }
+        ],
+        "bundle_tokens": [
+          {
+            "bundle_id": "RB-001",
+            "token": "b061ab691d364193929bea2fa01f04f4"
+          }
+        ],
+        "referral_context": [
+          {
+            "bundle_id": "RB-001",
+            "medical_history": "Fictional legacy history",
+            "allergies": "",
+            "referral_reason": "",
+            "referral_notes": "",
+            "department": "",
+            "follow_up_date": null,
+            "source": "",
+            "updated_at": "2026-10-06T20:57:23+00:00"
+          }
+        ],
+        "visit_drafts": [
+          {
+            "draft_id": "UV-40623CFD8B1C45839D32BEAABB9C2CFA",
+            "patient_id": "PK-001",
+            "created_at": "2026-10-06T20:57:23+00:00",
+            "updated_at": "2026-10-06T20:57:23+00:00",
+            "revision": 1
+          }
+        ],
+        "visit_draft_fields": [
+          {
+            "draft_id": "UV-40623CFD8B1C45839D32BEAABB9C2CFA",
+            "field_name": "mode",
+            "position": 0,
+            "value": "existing"
+          },
+          {
+            "draft_id": "UV-40623CFD8B1C45839D32BEAABB9C2CFA",
+            "field_name": "patient_id",
+            "position": 0,
+            "value": "PK-001"
+          },
+          {
+            "draft_id": "UV-40623CFD8B1C45839D32BEAABB9C2CFA",
+            "field_name": "source_facility",
+            "position": 0,
+            "value": "Interrupted fictional visit"
+          },
+          {
+            "draft_id": "UV-40623CFD8B1C45839D32BEAABB9C2CFA",
+            "field_name": "medications.rows",
+            "position": 0,
+            "value": "0"
+          },
+          {
+            "draft_id": "UV-40623CFD8B1C45839D32BEAABB9C2CFA",
+            "field_name": "medications.0.name",
+            "position": 0,
+            "value": "Fictional unfinished text"
+          }
+        ]
+      }
+    },
+    "attachments/da01fcc4c5164260933f1b847bacbb94.png": {
+      "hex": "89504e470d0a1a0a0000000d4948445200000001000000010804000000b51c0c020000000b4944415478da63fcff1f0003030200efa345990000000049454e44ae426082"
+    }
+  },
+  "passport": {
+    "manifest.json": {
+      "passport.json": "6ff7a7c9a93e4a573cb8ce963083e84d9597cf7a8e166effd5c7ba110138ebc2",
+      "attachments/da01fcc4c5164260933f1b847bacbb94.png": "6b1048f8a6d40bac0b2954c18fefa40c4ea7a96120fc2e54b7317c0e43c2bbec"
+    },
+    "passport.json": {
+      "format": "sehatraasta-passport",
+      "version": 1,
+      "tables": {
+        "schema_version": [
+          {
+            "version": 1,
+            "applied_at": "2026-10-06 20:57:22"
+          },
+          {
+            "version": 2,
+            "applied_at": "2026-10-06 20:57:22"
+          },
+          {
+            "version": 3,
+            "applied_at": "2026-10-06 20:57:23"
+          },
+          {
+            "version": 4,
+            "applied_at": "2026-10-06 20:57:23"
+          }
+        ],
+        "patients": [
+          {
+            "patient_id": "PK-001",
+            "display_name": "Amina Fictional Legacy",
+            "birth_year": 1980,
+            "revision": 10,
+            "language": "URDU"
+          }
+        ],
+        "referral_bundles": [
+          {
+            "bundle_id": "RB-001",
+            "patient_id": "PK-001",
+            "creation_time": "2026-09-12T12:34:00",
+            "source_facility": "Fictional legacy clinic",
+            "destination": "",
+            "referral_status": "DRAFT"
+          }
+        ],
+        "encounters": [],
+        "medication_items": [
+          {
+            "medication_id": "MD-001",
+            "bundle_id": "RB-001",
+            "verbatim_name": "Fictional medicine",
+            "strength": "10 mg",
+            "dose_text": "1 tablet",
+            "route_text": "",
+            "frequency_text": "As supplied",
+            "duration_text": "As supplied",
+            "instructions": "",
+            "source": "source not supplied"
+          }
+        ],
+        "instructions": [
+          {
+            "instruction_id": 1,
+            "bundle_id": "RB-001",
+            "category": "Fictional instruction",
+            "language": "ENGLISH",
+            "verbatim_text": "Fictional text only",
+            "author_source": "source not supplied",
+            "date": "2026-09-12"
+          }
+        ],
+        "attachments": [
+          {
+            "attachment_id": "AT-001",
+            "bundle_id": "RB-001",
+            "category": "other",
+            "original_display_name": "fictional-original.png",
+            "generated_stored_name": "da01fcc4c5164260933f1b847bacbb94.png",
+            "mime_type": "image/png",
+            "size_bytes": 68,
+            "sha256": "6b1048f8a6d40bac0b2954c18fefa40c4ea7a96120fc2e54b7317c0e43c2bbec",
+            "date": "2026-09-12",
+            "source": "source not supplied"
+          }
+        ],
+        "investigation_orders": [
+          {
+            "order_id": 1,
+            "bundle_id": "RB-001",
+            "test_name": "Fictional test",
+            "order_date": "2026-09-12",
+            "ordering_source": "source not supplied",
+            "workflow_status": "ORDERED"
+          }
+        ],
+        "diagnostic_results": [
+          {
+            "result_id": "RS-001",
+            "bundle_id": "RB-001",
+            "investigation_order_id": 1,
+            "test_name": "Fictional result",
+            "result_date": "2026-09-12",
+            "source_summary": "source not supplied",
+            "interpretation_note": "Fictional supplied text"
+          }
+        ],
+        "imaging_items": [
+          {
+            "imaging_id": "IM-001",
+            "bundle_id": "RB-001",
+            "attachment_id": null,
+            "modality": "X-ray",
+            "body_part": "Fictional part",
+            "date": "2026-09-12",
+            "facility": "Fictional clinic",
+            "report": "Fictional report"
+          }
+        ],
+        "cost_entries": [
+          {
+            "cost_entry_id": "CO-001",
+            "bundle_id": "RB-001",
+            "category": "TRAVEL",
+            "amount_paisa": 2510,
+            "date": "2026-09-12",
+            "source": "Fictional supplied source",
+            "source_type": "not supplied",
+            "source_identifier": "Fictional supplied source",
+            "reported_by_label": "",
+            "note": ""
+          }
+        ],
+        "category_reviews": [],
+        "audit_events": [
+          {
+            "audit_event_id": 1,
+            "bundle_id": "RB-001",
+            "timestamp": "2026-10-06T20:57:23.274479+00:00",
+            "action": "update context",
+            "entity_type": "referral",
+            "entity_id": "RB-001",
+            "actor_label": "device user",
+            "result": "success"
+          }
+        ],
+        "managed_attachments": [
+          {
+            "attachment_id": "AT-001",
+            "bundle_id": "RB-001",
+            "stored_name": "da01fcc4c5164260933f1b847bacbb94.png",
+            "sha256": "6b1048f8a6d40bac0b2954c18fefa40c4ea7a96120fc2e54b7317c0e43c2bbec",
+            "category": "other",
+            "source_type": "not supplied",
+            "source_identifier": null,
+            "order_id": null,
+            "result_id": null,
+            "imaging_id": null,
+            "instruction_id": null,
+            "medication_list": 0
+          }
+        ],
+        "file_audit_events": [
+          {
+            "event_id": 1,
+            "bundle_id": "RB-001",
+            "attachment_id": "AT-001",
+            "occurred_at": "2026-10-06 20:57:23",
+            "action": "import",
+            "outcome": "success"
+          }
+        ],
+        "bundle_tokens": [
+          {
+            "bundle_id": "RB-001",
+            "token": "b061ab691d364193929bea2fa01f04f4"
+          }
+        ],
+        "referral_context": [
+          {
+            "bundle_id": "RB-001",
+            "medical_history": "Fictional legacy history",
+            "allergies": "",
+            "referral_reason": "",
+            "referral_notes": "",
+            "department": "",
+            "follow_up_date": null,
+            "source": "",
+            "updated_at": "2026-10-06T20:57:23+00:00"
+          }
+        ],
+        "visit_drafts": [],
+        "visit_draft_fields": []
+      }
+    },
+    "attachments/da01fcc4c5164260933f1b847bacbb94.png": {
+      "hex": "89504e470d0a1a0a0000000d4948445200000001000000010804000000b51c0c020000000b4944415478da63fcff1f0003030200efa345990000000049454e44ae426082"
+    }
+  },
+  "export": {
+    "warning": "Referral information as entered. Verify source documents and review status. This summary does not provide diagnosis or treatment advice.",
+    "patient": {
+      "ID": "PK-001",
+      "name": "Amina Fictional Legacy",
+      "birth_year": 1980,
+      "language": "URDU"
+    },
+    "bundle": {
+      "ID": "RB-001",
+      "creation_time": "2026-09-12T12:34:00",
+      "source_facility": "Fictional legacy clinic",
+      "destination": "",
+      "status": "DRAFT",
+      "encounters": [],
+      "medication_items": [
+        {
+          "ID": "MD-001",
+          "name": "Fictional medicine",
+          "strength": "10 mg",
+          "dose": "1 tablet",
+          "route": "",
+          "frequency": "As supplied",
+          "duration": "As supplied",
+          "instructions": "",
+          "source": "source not supplied"
+        }
+      ],
+      "instructions": [
+        {
+          "category": "Fictional instruction",
+          "language": "ENGLISH",
+          "text": "Fictional text only",
+          "source": "source not supplied",
+          "date": "2026-09-12"
+        }
+      ],
+      "attachments": [
+        {
+          "ID": "AT-001",
+          "category": "other",
+          "name": "fictional-original.png",
+          "MIME_type": "image/png",
+          "sha": "6b1048f8a6d40bac0b2954c18fefa40c4ea7a96120fc2e54b7317c0e43c2bbec",
+          "date": "2026-09-12",
+          "source": "source not supplied",
+          "size": 68,
+          "generated_stored_name": "da01fcc4c5164260933f1b847bacbb94.png"
+        }
+      ],
+      "imaging_items": [
+        {
+          "ID": "IM-001",
+          "modality": "X-ray",
+          "body_part": "Fictional part",
+          "date": "2026-09-12",
+          "facility": "Fictional clinic",
+          "report": "Fictional report",
+          "Attachment_ID": null
+        }
+      ],
+      "cost_entries": [
+        {
+          "ID": "CO-001",
+          "category": "TRAVEL",
+          "amount_pkr": "25.10",
+          "source_type": "not supplied",
+          "source_identifier": "Fictional supplied source",
+          "reported_by_label": "",
+          "date": "2026-09-12",
+          "source": "Fictional supplied source",
+          "note": ""
+        }
+      ],
+      "category_reviews": [],
+      "audit_events": [
+        {
+          "time": "2026-10-06T20:57:23.274479+00:00",
+          "action": "update context",
+          "audit_type": "referral",
+          "ID": "RB-001",
+          "actor_label": "device user",
+          "result": "success"
+        }
+      ],
+      "investigation_orders": [
+        {
+          "name": "Fictional test",
+          "date": "2026-09-12",
+          "source": "source not supplied",
+          "workflow_status": "ORDERED"
+        }
+      ],
+      "diagnostic_results": [
+        {
+          "ID": "RS-001",
+          "name": "Fictional result",
+          "date": "2026-09-12",
+          "source": "source not supplied",
+          "interpretation": "Fictional supplied text",
+          "investigation_order_index": 0
+        }
+      ]
+    },
+    "completeness": {
+      "present": [],
+      "missing": [],
+      "pending": [],
+      "not_reviewed": [
+        "encounters",
+        "medication list",
+        "investigation orders",
+        "diagnostic results",
+        "imaging reports",
+        "instructions",
+        "attachments",
+        "costs"
+      ],
+      "not_applicable": []
+    },
+    "total_cost_pkr": "25.10",
+    "referral_context": {
+      "bundle_id": "RB-001",
+      "medical_history": "Fictional legacy history",
+      "allergies": "",
+      "referral_reason": "",
+      "referral_notes": "",
+      "department": "",
+      "follow_up_date": null,
+      "source": "",
+      "updated_at": "2026-10-06T20:57:23+00:00"
+    }
+  },
+  "migrations_lf": {
+    "001_initial.sql": "18d6d7836227ee2432860e0d157e224d605fc4a7ea02a08f0eb44947986c8a82",
+    "002_attachments.sql": "77f62c6cf32db355669eb79f27a9e05839ae85ab6870842cf3b8076e2723bdc8",
+    "003_passport.sql": "01f461342230ec0fbe1ce9c8ae2f5a6f8d53293f25ff9b57a1894f72b92a1997",
+    "004_unfinished_visits.sql": "165d926cb5da109212099dd3e879a9283a5d2b7140a543e9345d7b761c5bf154"
+  }
+}
