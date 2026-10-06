@@ -52,6 +52,7 @@ android/local.properties
 output/android/
 output/google-play/
 tmp/
+.playwright-mcp/
 android/app/build/
 *.pyc
 output/
