@@ -342,6 +342,15 @@ public class OfflineFlowTest {
         js("document.querySelectorAll('[name=visit]').forEach(input=>input.checked=true);document.querySelector('form.entry-form').submit()");
         waitFor("document.documentElement.dataset.reportReady==='yes'");
         assertEquals("2", js("document.querySelectorAll('.report-visit').length"));
+        assertEquals("0", js("document.querySelectorAll('.document-page img').length"));
+        // Individual originals are opt-in, and revising preserves visit choices.
+        js("Array.from(document.querySelectorAll('a')).find(a=>a.href.includes('/print?') && a.href.includes('selection=individual')).click()");
+        waitFor("document.querySelector('[name=document]')");
+        assertEquals("2", js("document.querySelectorAll('[name=visit]:checked').length"));
+        assertEquals("0", js("document.querySelectorAll('[name=document]:checked').length"));
+        tap("[name=document]");
+        js("document.querySelector('form.entry-form').submit()");
+        waitFor("document.documentElement.dataset.reportReady==='yes'");
         assertEquals("1", js("document.querySelectorAll('.document-page img').length"));
         assertTrue(stringValue("document.body.innerText").contains("Second verification clinic"));
         assertEquals("\"rgb(255, 255, 255)\"", js("getComputedStyle(document.body).backgroundColor"));

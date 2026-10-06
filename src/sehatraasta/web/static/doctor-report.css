@@ -8,6 +8,7 @@
  html,body{background:#fff!important;width:auto;min-width:0}
  body{font-size:10pt}
  .report-toolbar{display:none!important}
+ .report-original{display:none!important}
  .doctor-report{padding:0;margin:0;max-width:none;width:100%;background:#fff!important}
  .continuation-identity{display:block;position:fixed;bottom:0;left:0;right:0;z-index:1;border-top:1px solid #aaa;padding-top:2mm;font-size:8pt;background:#fff}
  .patient-heading{padding-bottom:6mm}
@@ -26,4 +27,5 @@
  html[data-report-ready=no] .report-toolbar{display:block!important}
 }
 /* Mobile preview rules must not override A4 print layout in Android WebView. */
+@media screen{.report-toolbar a,.report-toolbar button,.report-original{display:inline-flex;align-items:center;min-block-size:48px;padding:10px 12px}.report-toolbar a:focus-visible,.report-original:focus-visible{outline:2px solid #333;outline-offset:3px}}
 @media screen and (max-width:480px){.doctor-report{padding:16px}.report-toolbar{padding:12px}.report-fields tr,.report-fields th,.report-fields td{display:block;width:100%}.report-fields td{padding-bottom:8px}.patient-heading img{width:100px}}

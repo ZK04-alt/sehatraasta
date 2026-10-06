@@ -77,9 +77,9 @@ def create_app(config=None):
         language = getattr(g, 'language', 'en')
         language_urls = {}
         for code in LANGUAGES:
-            parameters = request.args.to_dict()
-            parameters['lang'] = code
-            language_urls[code] = request.path + '?' + urlencode(parameters)
+            parameters = request.args.to_dict(flat=False)
+            parameters['lang'] = [code]
+            language_urls[code] = request.path + '?' + urlencode(parameters, doseq=True)
         return dict(t=lambda key: translate(key, language), lang=language,
                     direction=LANGUAGES[language][1], languages=LANGUAGES,
                     language_urls=language_urls, form_token=form_token)

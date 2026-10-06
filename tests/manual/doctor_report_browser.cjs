@@ -16,6 +16,7 @@ const path = require('node:path');
     assert.ok(!(await page.locator('body').innerText()).includes('PK-001'));
     await page.goto(base+'/patients/PK-001/print');
     for(const choice of await page.locator('[name=visit]').all()) await choice.check();
+    for(const choice of await page.locator('[name=document]').all()) await choice.check();
     await page.locator('form.entry-form button').click();
     await page.waitForFunction(()=>document.documentElement.dataset.reportReady==='yes');
     assert.equal(await page.locator('.report-visit').count(),3);

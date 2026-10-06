@@ -6,6 +6,7 @@ from datetime import datetime
 from hashlib import sha256
 from io import BytesIO
 from time import time
+from urllib.parse import urlencode
 
 from flask import Blueprint, current_app, g, request, render_template, redirect, url_for, flash, send_file, session, jsonify
 import qrcode
@@ -18,7 +19,7 @@ from sehatraasta.services.web_transfer_service import WebTransferService
 from sehatraasta.services.file_service import FileService
 from sehatraasta.services.patient_deletion_service import PatientDeletionService
 from sehatraasta.services.visit_deletion_service import VisitDeletionService
-from sehatraasta.services.doctor_report_service import DoctorReportService, supplied
+from sehatraasta.services.doctor_report_service import DoctorReportService, ReportDocumentError, ReportSelectionError, supplied
 from sehatraasta.services.qr_service import QRService, verify_payload
 from sehatraasta.services.referral_context import ReferralContextService
 from sehatraasta.services.passport_service import PassportService
@@ -356,11 +357,11 @@ def audit(bundle_id):
 @pages.get('/bundles/<bundle_id>/print')
 def print_bundle(bundle_id):
     owner, item = bundles().get_bundle_owner(bundle_id)
-    return doctor_report(owner.ID, [item.ID], True, False)
+    return report_response(owner, [item.ID], True, False)
 
 
-def doctor_report(patient_id, identifiers, include_documents, include_costs):
-    patient, visits = DoctorReportService(bundles()).collect(patient_id, identifiers, include_documents)
+def doctor_report(patient_id, identifiers, include_documents, include_costs, document_ids=None):
+    patient, visits = DoctorReportService(bundles()).collect(patient_id, identifiers, include_documents, document_ids)
     for visit in visits:
         item = visit['bundle']
         payload = QRService(bundles().repository.path).for_bundle(item.ID)
@@ -368,7 +369,13 @@ def doctor_report(patient_id, identifiers, include_documents, include_costs):
         qrcode.make(payload).save(buffer, format='PNG')
         visit['qr'] = base64.b64encode(buffer.getvalue()).decode('ascii')
         visit['sections'] = [(title, rows) for title, rows in record_sections(item) if rows]
-    return render_template('doctor_report.html', title='report.title', patient=patient, visits=visits,
+    choices = [('lang', g.language), ('selection', 'individual')]
+    choices.extend(('visit', identifier) for identifier in identifiers)
+    choices.extend(('document', document.ID) for visit in visits for document in visit['documents'])
+    if include_costs:
+        choices.append(('costs', 'yes'))
+    selection_url = url_for('pages.patient_print', patient_id=patient_id) + '?' + urlencode(choices)
+    return render_template('doctor_report.html', title='report.title', patient=patient, visits=visits, selection_url=selection_url,
         include_costs=include_costs, printing=True, prepared_at=datetime.now().strftime('%Y-%m-%d %H:%M'))
 
 
@@ -376,12 +383,36 @@ def doctor_report(patient_id, identifiers, include_documents, include_costs):
 def patient_print(patient_id):
     item = bundles().get_patient(patient_id)
     chosen = request.args.getlist('visit')
+    documents = request.args.getlist('document')
+    costs = request.args.get('costs') == 'yes'
     if request.args.get('preview') == 'yes':
-        try:
-            return doctor_report(patient_id, chosen, request.args.get('documents') == 'yes', request.args.get('costs') == 'yes')
-        except ValueError:
-            return render_template('report_selection.html', title='report.choose', patient=item, chosen=chosen, error='report.selection_error'), 422
-    return render_template('report_selection.html', title='report.choose', patient=item, chosen=chosen, error=None)
+        return report_response(item, chosen, request.args.get('documents') == 'yes', costs,
+                               documents if request.args.get('selection') == 'individual' else None)
+    values = dict(title='report.choose', patient=item, chosen=chosen,
+                  documents=documents, include_costs=costs, document_error=None, error=None)
+    return render_template('report_selection.html', **values)
+
+
+def report_response(patient, chosen, include_documents, costs, documents=None):
+    # Normalize legacy all-original links to explicit choices for the recovery form.
+    effective = documents if documents is not None else [document.ID
+        for visit in patient.referrals if include_documents and visit.ID in chosen
+        for document in visit.attachments]
+    values = dict(title='report.choose', patient=patient, chosen=chosen,
+                  documents=effective, include_costs=costs, document_error=None, error=None)
+    try:
+        return doctor_report(patient.ID, chosen, include_documents, costs, documents)
+    except ReportSelectionError as error:
+        return render_template('report_selection.html', **{**values,
+            'error':'report.document_visit_error', 'document_error':error.document_name}), 422
+    except ReportDocumentError as error:
+        return render_template('report_selection.html', **{**values,
+            'error':'report.selection_error', 'document_error':error.document_name}), 422
+    except ValueError:
+        code = 'report.no_visit' if not chosen else 'report.selection_error'
+        return render_template('report_selection.html', **{**values, 'error':code}), 422
+    except StorageError:
+        return render_template('report_selection.html', **{**values, 'error':'report.selection_error'}), 503
 
 
 @pages.route('/bundles/<bundle_id>/delete', methods=['GET', 'POST'])

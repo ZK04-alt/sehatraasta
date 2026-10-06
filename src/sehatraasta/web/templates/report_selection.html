@@ -1,14 +1,20 @@
 {% extends 'base.html' %}{% block content %}
 <p><strong><bdi dir="auto">{{ patient.name }}</bdi></strong> · {{ patient.birth_year }}</p>
 <p>{{ t('report.choose_help') }}</p>
-{% if error %}<p role="alert" class="error-summary">{{ t(error) }}</p>{% endif %}
-<form method="get" class="entry-form">
+{% if error %}<p role="alert" id="errors" tabindex="-1" class="error-summary">{{ t(error) }}{% if document_error %} <bdi dir="auto">{{ document_error }}</bdi>{% endif %}</p>{% endif %}
+<form method="get" class="entry-form" data-report-selection>
 <input type="hidden" name="lang" value="{{ lang }}"><input type="hidden" name="preview" value="yes">
+<input type="hidden" name="selection" value="individual">
 <fieldset><legend>{{ t('page.bundles') }}</legend>
-{% for visit in patient.referrals|sort(attribute='creation_time') %}<label class="report-choice"><input type="checkbox" name="visit" value="{{ visit.ID }}" {{ 'checked' if visit.ID in chosen else '' }}> <bdi dir="auto">{{ visit.source_facility }}</bdi> · <bdi dir="ltr">{{ visit.creation_time.strftime('%Y-%m-%d %H:%M') }}</bdi>{% if visit.destination %} · <bdi dir="auto">{{ visit.destination }}</bdi>{% endif %}</label>{% endfor %}
+{% for visit in patient.referrals|sort(attribute='creation_time') %}
+<fieldset class="report-visit-choice"><legend><bdi dir="auto">{{ visit.source_facility }}</bdi> · <bdi dir="ltr">{{ visit.creation_time.strftime('%Y-%m-%d %H:%M') }}</bdi></legend>
+<label class="report-choice"><input type="checkbox" name="visit" value="{{ visit.ID }}" {{ 'checked' if visit.ID in chosen else '' }}> {{ t('report.include_visit') }}{% if visit.destination %} · <bdi dir="auto">{{ visit.destination }}</bdi>{% endif %}</label>
+{% if visit.attachments %}<p>{{ t('report.document_choice') }}</p>{% for document in visit.attachments %}
+<label class="report-choice"><input type="checkbox" name="document" value="{{ document.ID }}" {{ 'checked' if document.ID in documents else '' }}> <bdi dir="auto">{{ document.name }}</bdi> · <bdi dir="ltr">{{ document.date }}</bdi></label>
+{% endfor %}{% endif %}</fieldset>{% endfor %}
 </fieldset>
-<label><input type="checkbox" name="documents" value="yes" checked> {{ t('report.documents') }}</label>
-<label><input type="checkbox" name="costs" value="yes"> {{ t('report.costs') }}</label>
+<label class="report-choice"><input type="checkbox" name="costs" value="yes" {{ 'checked' if include_costs else '' }}> {{ t('report.costs') }}</label>
+<details><summary>{{ t('report.limit_title') }}</summary><p>{{ t('report.limits') }}</p></details>
 <p>{{ t('report.privacy') }}</p>
 <div class="form-actions"><button>{{ t('report.preview') }}</button><a href="{{ url_for('pages.patient', patient_id=patient.ID, lang=lang) }}">{{ t('action.cancel') }}</a></div>
 </form>{% endblock %}

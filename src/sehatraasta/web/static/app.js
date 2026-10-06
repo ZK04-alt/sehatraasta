@@ -220,3 +220,17 @@ if (intake) {
   intake.querySelector('[data-repeat="orders"]').addEventListener('input', refreshOrders);
   refreshOrders();
 }
+
+// Keep current report choices when changing language before submitting the form.
+const reportSelection = document.querySelector('[data-report-selection]');
+if (reportSelection) {
+  document.querySelectorAll('.language-nav a').forEach(link => {
+    link.addEventListener('click', event => {
+      event.preventDefault();
+      const choices = new URLSearchParams(new FormData(reportSelection));
+      choices.delete('preview');
+      choices.set('lang', link.getAttribute('lang'));
+      window.location.href = window.location.pathname + '?' + choices.toString();
+    });
+  });
+}

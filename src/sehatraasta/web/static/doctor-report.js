@@ -1,6 +1,20 @@
 // Render selected original documents locally; never send them to a cloud renderer.
 const status = document.querySelector('#report-status');
 const button = document.querySelector('#report-print');
+const retry = document.querySelector('#report-retry');
+let activeDocument = '';
+retry.addEventListener('click', () => window.location.reload());
+async function readDocument(url, format) {
+  const controller = new AbortController();
+  const deadline = setTimeout(() => controller.abort(), 30000);
+  try {
+    const response = await fetch(url, {cache:'no-store', signal:controller.signal});
+    if (!response.ok) throw new Error('document unavailable');
+    return await response[format]();
+  } finally {
+    clearTimeout(deadline);
+  }
+}
 function documentCaption(section, number, count) {
   const patient = document.querySelector('.patient-heading h2').textContent;
   const details = document.querySelector('.patient-heading p').textContent;
@@ -21,12 +35,11 @@ async function prepare() {
     return source;
   };
   for (const section of document.querySelectorAll('[data-document]')) {
+    activeDocument = section.dataset.documentName;
     document.documentElement.dataset.reportStage = 'read-document';
     const container = section.querySelector('.document-pages');
     if (section.dataset.document === 'application/pdf' && window.SRAndroid) {
-      const native = await fetch(section.dataset.nativeUrl, {cache:'no-store'});
-      if (!native.ok) throw new Error('document unavailable');
-      const result = await native.json();
+      const result = await readDocument(section.dataset.nativeUrl, 'json');
       if (!Array.isArray(result.pages) || !result.pages.length || pages + result.pages.length > 60) throw new Error('page limit');
       for (let number=0; number<result.pages.length; number++) {
         const image = new Image(); image.src = checkImage(result.pages[number]);
@@ -37,9 +50,7 @@ async function prepare() {
       }
       continue;
     }
-    const response = await fetch(section.dataset.url, {cache:'no-store'});
-    if (!response.ok) throw new Error('document unavailable');
-    const bytes = await response.arrayBuffer();
+    const bytes = await readDocument(section.dataset.url, 'arrayBuffer');
     if (section.dataset.document === 'application/pdf') {
       if (!pdfjs) {
         pdfjs = await import('./vendor/pdfjs/pdf.min.mjs');
@@ -83,6 +94,7 @@ async function prepare() {
       figure.append(caption,image); container.append(figure);
     }
   }
+  activeDocument = '';
   document.documentElement.dataset.reportStage = 'fonts';
   await document.fonts.ready;
   document.documentElement.dataset.reportStage = 'images';
@@ -93,5 +105,10 @@ async function prepare() {
 prepare().catch(error => {
   // Fixed diagnostic name only; never log document contents or patient text.
   document.documentElement.dataset.reportError = error.name;
-  status.textContent = status.dataset.error; status.setAttribute('role','alert');
+  const limit = ['choose fewer documents','page limit','too many pages'].includes(error.message);
+  const explanation = error.name === 'AbortError' ? status.dataset.timeout
+    : limit ? status.dataset.limitError : status.dataset.error;
+  status.textContent = explanation + (activeDocument ? ' '+activeDocument : '');
+  status.setAttribute('role','alert');
+  retry.hidden = false;
 });

@@ -131,3 +131,8 @@
   .web-app .language-switch select { flex: 0 1 240px; }
   .web-app .skip:focus { position: fixed; top: auto; bottom: 1rem; left: 1rem; right: 1rem; inset-block-start: auto; }
 }
+/* Explicit report disclosure: grouped originals, readable labels, generous tap rows. */
+.report-visit-choice { min-inline-size: 0; margin-block: 1rem; padding: 1rem; border: 1px solid var(--line); }
+.report-visit-choice legend { max-inline-size: 100%; overflow-wrap: anywhere; }
+.report-choice { display: flex; align-items: center; gap: .75rem; min-block-size: 48px; padding-block: .5rem; overflow-wrap: anywhere; }
+.report-choice input { flex: 0 0 24px; }
