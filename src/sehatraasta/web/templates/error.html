@@ -1,0 +1,1 @@
+{% extends 'base.html' %}{% block content %}<section class="error-page"><p class="error-number">{{ status }}</p><p role="alert">{{ t(code) }}</p><a class="button secondary" href="{{ url_for('pages.queue', lang=lang) }}">{{ t('action.back_workspace') }}</a></section>{% endblock %}

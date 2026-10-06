@@ -1,0 +1,10 @@
+{% extends 'base.html' %}{% block content %}
+<div class="toolbar"><a class="button" href="{{ url_for('pages.bundle_new', lang=lang) }}">{{ t('action.bundle_new') }}</a></div>
+{% if unfinished %}<section class="section"><h2>{{ t('visit.unfinished') }}</h2><div class="referral-list">{% for visit in unfinished %}<article class="referral-card"><a href="{{ url_for('pages.bundle_new', unfinished=visit.draft_id, lang=lang) }}"><h2><bdi dir="auto">{{ visit.display_name or t('visit.unnamed') }}</bdi></h2><p><bdi dir="auto">{{ visit.facility or t('visit.add_details') }}</bdi></p><span class="referral-card-meta"><span>{{ t('visit.unfinished') }}</span><span>{{ t('visit.continue') }}</span></span></a></article>{% endfor %}</div></section>{% endif %}
+{% if rows %}
+<div class="referral-list">{% for patient, bundle in rows %}<article class="referral-card">
+<a class="record-link" href="{{ url_for('pages.bundle', bundle_id=bundle.ID, lang=lang) }}"><h2><bdi dir="auto">{{ patient.name }}</bdi></h2><p><bdi dir="auto">{{ bundle.source_facility }}</bdi>{% if bundle.destination %}<br>{{ t('field.destination') }}: <bdi dir="auto">{{ bundle.destination }}</bdi>{% endif %}</p><span class="referral-card-meta"><bdi dir="ltr">{{ bundle.creation_time.date() }}</bdi><span>{{ t('visit.complete') }}</span></span></a>
+<p class="inline-actions"><a href="{{ url_for('pages.patient', patient_id=patient.ID, lang=lang) }}">{{ t('page.patient') }}</a><a href="{{ url_for('pages.visit_delete', bundle_id=bundle.ID, lang=lang) }}">{{ t('visit.remove') }}</a></p>
+</article>{% endfor %}</div>
+{% elif not unfinished %}<section class="empty-state"><h2>{{ t('state.empty') }}</h2><p>{{ t('app.empty_help') }}</p></section>{% endif %}
+{% endblock %}

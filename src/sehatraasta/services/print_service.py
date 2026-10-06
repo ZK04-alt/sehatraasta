@@ -13,7 +13,7 @@ from sehatraasta.storage.errors import StorageError
 from .qr_service import QRService, verify_payload
 
 
-WARNING = "SYNTHETIC ONLY - NOT FOR MEDICAL CARE"
+WARNING = "Verify source documents and review status"
 
 
 def wrapped(text):
@@ -56,11 +56,18 @@ class PrintService:
             state = review.state.value if review else "not reviewed"
             time = review.time.isoformat(timespec="minutes") if review else "not reviewed"
             overview.extend(wrapped(f"{category.value}: {state} | {time}"))
-        overview.extend(wrapped(f"Reported synthetic cost total: PKR {bundle.total_cost_pkr():,.2f}"))
+        overview.extend(wrapped(f"Reported cost total: PKR {bundle.total_cost_pkr():,.2f}"))
         overview.extend(wrapped("Reported cost only; this is not a measure of economic impact."))
         overview.extend(wrapped("Source document IDs: " + (", ".join(item.ID for item in bundle.attachments) or "none supplied")))
 
-        detail = ["COST ENTRIES (reported synthetic PKR)"]
+        detail = ["COST ENTRIES (reported PKR)"]
+        from .referral_context import ReferralContextService
+        context = ReferralContextService(self.database).get(bundle_id)
+        notes = ['HISTORY AND REFERRAL NOTES (as supplied)']
+        for field in ('department', 'referral_reason', 'medical_history', 'allergies', 'referral_notes', 'follow_up_date', 'source'):
+            notes.extend(wrapped(field.replace('_', ' ').title() + ': ' + (context[field] or 'not recorded')))
+        notes.append('Blank allergies mean not recorded, not no known allergies.')
+        detail = notes + [''] + detail
         if not bundle.cost_entries:
             detail.append("No cost entries supplied.")
         for item in bundle.cost_entries:
@@ -108,7 +115,7 @@ class PrintService:
         generated = datetime.now(timezone.utc).isoformat(timespec="minutes")
         html = ['<!doctype html><html lang="en"><head><meta charset="utf-8">',
                 '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src data:; style-src \'unsafe-inline\'">',
-                '<title>SehatRaasta synthetic referral</title><style>',
+                '<title>SehatRaasta referral</title><style>',
                 '@page { size: A4; margin: 12mm; } * { box-sizing: border-box; }',
                 'body { margin:0; background:#eee; color:#000; }',
                 '.page { width:186mm; height:270mm; padding:4mm; margin:8mm auto; background:white; position:relative; break-after:page; }',

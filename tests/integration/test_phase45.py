@@ -75,7 +75,7 @@ def test_v1_upgrade_preserves_records(tmp_path):
     initialize_database(database)
     initialize_database(database)
     assert SQLiteRepository(database).get_patient("PK-001").name == "Demo"
-    assert [row["version"] for row in rows(database)["schema_version"]] == [1, 2]
+    assert [row["version"] for row in rows(database)["schema_version"]] == [1, 2, 3, 4]
 
 
 @pytest.mark.parametrize("extension,content,mime", [
@@ -108,12 +108,10 @@ def test_rejection_changes_no_rows_or_files(case, content):
     assert not files.root.exists()
 
 
-def test_synthetic_confirmation_required(case):
+def test_upload_does_not_require_synthetic_confirmation(case):
     database, bundles, files, source = case
-    before = rows(database)
-    with pytest.raises(ValueError, match="synthetic"):
-        files.import_file("SR-DEMO-001", "AT-001", source, AttachmentCategory.OTHER, date.today(), Provenance(ProvenanceType.NOT_SUPPLIED))
-    assert rows(database) == before
+    files.import_file("SR-DEMO-001", "AT-001", source, AttachmentCategory.OTHER, date.today(), Provenance(ProvenanceType.NOT_SUPPLIED))
+    assert files.retrieve("AT-001")[0] == source.read_bytes()
 
 
 def test_duplicate_bytes_different_name_rejected(case):
@@ -264,7 +262,7 @@ def test_print_is_offline_escaped_and_exact(case, tmp_path):
     assert "&lt;script&gt;" in html and "<script>" not in html
     assert "width:30mm" in html and "data:image/png;base64," in html
     assert "@media print" in html and "@page" in html
-    assert html.count("SYNTHETIC ONLY") == html.count('<section class="page">')
+    assert html.count("Verify source documents and review status") == html.count('<section class="page">')
     assert "http://" not in html and "https://" not in html and str(database.parent) not in html
 
 

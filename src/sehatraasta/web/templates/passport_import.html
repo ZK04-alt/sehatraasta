@@ -1,0 +1,7 @@
+{% extends 'base.html' %}{% block content %}
+<p>{{ t('passport.import_help') }}</p>
+{% if error %}<p class="error-summary" role="alert">{{ t(error) }}</p>{% endif %}
+{% if summary %}<section class="section"><h2>{{ t('passport.preview') }}</h2><p><bdi dir="auto">{{ summary.patient }}</bdi> · {{ summary.birth_year }}</p><p><bdi dir="auto">{{ summary.destination }}</bdi></p><p>{{ t('page.attachments') }}: {{ summary.documents }}</p></section>{% endif %}
+<form method="post" enctype="multipart/form-data" class="entry-form"><input type="hidden" name="csrf" value="{{ form_token() }}"><label for="archive">{{ t('passport.file') }}</label><input id="archive" name="archive" type="file" accept=".zip,application/zip" required><p>{{ t('help.reselect_file') }}</p>
+<div class="form-actions"><button name="intent" value="check">{{ t('action.check') }}</button>{% if summary %}<button name="intent" value="import">{{ t('passport.import') }}</button>{% endif %}</div></form>
+{% endblock %}

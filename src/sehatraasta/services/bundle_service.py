@@ -1,3 +1,4 @@
+from .identifiers import IDAllocator
 from sehatraasta.domain import (
     CategoryReview,
     CostEntry,
@@ -16,6 +17,8 @@ class BundleService:
         self.repository = repository
 
     def create_patient(self, ID, name, birth_year, language):
+        if ID is None:
+            ID = IDAllocator(self.repository).allocate('patient')
         patient = Patient(ID, name, birth_year, language)
         self.repository.add_patient(patient)
         return patient
@@ -26,6 +29,9 @@ class BundleService:
             raise ValueError("patient not found")
         return patient
 
+    def list_patients(self):
+        return self.repository.list_patients()
+
     def create_bundle(
         self,
         patient_id,
@@ -35,6 +41,8 @@ class BundleService:
         destination,
         status,
     ):
+        if bundle_id is None:
+            bundle_id = self._new_bundle_id()
         if any(bundle.ID == bundle_id for _, bundle in self.list_bundles()):
             raise ValueError("duplicate referral ID")
 
@@ -50,6 +58,9 @@ class BundleService:
         self.repository.save_patient(patient)
         return bundle
 
+    def _new_bundle_id(self):
+        return IDAllocator(self.repository).allocate('bundle')
+
     def get_bundle_owner(self, bundle_id):
         for patient in self.repository.list_patients():
             for bundle in patient.referrals:
@@ -60,6 +71,13 @@ class BundleService:
     def get_bundle(self, bundle_id):
         _, bundle = self.get_bundle_owner(bundle_id)
         return bundle
+
+    def get_attachment_owner(self, attachment_id):
+        for _, bundle in self.list_bundles():
+            for attachment in bundle.attachments:
+                if attachment.ID == attachment_id:
+                    return bundle, attachment
+        raise ValueError("attachment not found")
 
     def list_bundles(self):
         bundles = []
@@ -94,7 +112,7 @@ class BundleService:
             duration,
             instructions,
             source,
-            ID,
+            ID if ID is not None else IDAllocator(self.repository).allocate('medication'),
         )
         bundle.add_medication(item)
         self._save_bundle(patient)
@@ -131,7 +149,7 @@ class BundleService:
             name,
             result_date,
             source,
-            ID,
+            ID if ID is not None else IDAllocator(self.repository).allocate('result'),
             interpretation,
             order,
         )
@@ -157,7 +175,7 @@ class BundleService:
             imaging_date,
             facility,
             report,
-            ID,
+            ID if ID is not None else IDAllocator(self.repository).allocate('imaging'),
             attachment_id,
         )
         bundle.add_imaging_item(item)
@@ -194,10 +212,12 @@ class BundleService:
         cost_date,
         source,
         note="",
-        source_type="reported",
+        source_type="not supplied",
         source_identifier=None,
     ):
         patient, bundle = self.get_bundle_owner(bundle_id)
+        if ID is None:
+            ID = IDAllocator(self.repository).allocate('cost')
         entry = CostEntry(ID, category, amount, cost_date, source, note, source_type, source_identifier)
         bundle.add_cost_entry(entry)
         self._save_bundle(patient)

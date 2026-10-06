@@ -24,6 +24,7 @@ from sehatraasta.storage import SQLiteRepository, StorageError
 from sehatraasta.services.database_service import DatabaseService
 from sehatraasta.phase_commands import add_commands, run_command, restore_command
 from sehatraasta.storage.errors import log_storage_error
+from sehatraasta.presentation.errors import error_from_exception
 
 
 EXIT_SUCCESS = 0
@@ -39,7 +40,7 @@ def _add_argument(parser, name, help_text):
 def build_parser():
     parser = argparse.ArgumentParser(
         prog="sehatraasta",
-        description="Synthetic referral-bundle development CLI.",
+        description="SehatRaasta referral records.",
         epilog=(
             "Examples: sehatraasta create-patient --id SR-DEMO-001 "
             "--name 'Amina Demo' --birth-year 1980 --language urdu; "
@@ -49,20 +50,20 @@ def build_parser():
     parser.add_argument(
         "--data-file", "--database",
         default=str(DEFAULT_DATA_FILE),
-        help="Path to the synthetic SQLite database (old JSON files are preserved).",
+        help="Path to the SQLite database (old JSON files are preserved).",
     )
     commands = parser.add_subparsers(dest="command", required=True)
     add_commands(commands)
 
     create_patient = commands.add_parser("create-patient")
-    _add_argument(create_patient, "--id", "Fictional patient ID.")
-    _add_argument(create_patient, "--name", "Fictional patient name.")
-    _add_argument(create_patient, "--birth-year", "Fictional birth year.")
+    _add_argument(create_patient, "--id", "Patient ID.")
+    _add_argument(create_patient, "--name", "Patient name.")
+    _add_argument(create_patient, "--birth-year", "Birth year.")
     _add_argument(create_patient, "--language", "english, urdu, or pashto.")
 
     create_bundle = commands.add_parser("create-bundle")
-    _add_argument(create_bundle, "--patient-id", "Existing fictional patient ID.")
-    _add_argument(create_bundle, "--bundle-id", "New referral-bundle ID.")
+    _add_argument(create_bundle, "--patient-id", "Existing patient ID.")
+    create_bundle.add_argument("--bundle-id", help="Optional existing-format ID; generated when omitted.")
     _add_argument(create_bundle, "--created", "Creation time in ISO format.")
     _add_argument(create_bundle, "--source", "Source facility text.")
     _add_argument(create_bundle, "--destination", "Referral destination text.")
@@ -85,13 +86,13 @@ def build_parser():
         "--name",
         "--strength",
         "--dose",
-        "--route",
         "--frequency",
         "--duration",
-        "--instructions",
     ):
         _add_argument(medication, name, name[2:].replace("-", " "))
     medication.add_argument("--source", default="source not supplied")
+    medication.add_argument("--route", default="")
+    medication.add_argument("--instructions", default="")
 
     order = commands.add_parser("add-order")
     _add_argument(order, "--bundle-id", "Referral-bundle ID.")
@@ -106,7 +107,7 @@ def build_parser():
     _add_argument(result, "--name", "Result name.")
     _add_argument(result, "--date", "Result date in YYYY-MM-DD format.")
     result.add_argument("--source", default="source not supplied")
-    _add_argument(result, "--interpretation", "Verbatim fictional result text.")
+    result.add_argument("--interpretation", default="", help="Optional result text as written.")
     result.add_argument("--order-name")
 
     attachment = commands.add_parser("add-attachment")
@@ -118,10 +119,10 @@ def build_parser():
         "--mime-type",
         "--sha",
         "--date",
-        "--source",
         "--size",
     ):
         _add_argument(attachment, name, name[2:].replace("-", " "))
+    attachment.add_argument("--source", default="source not supplied")
 
     imaging = commands.add_parser("add-imaging")
     for name in (
@@ -131,21 +132,21 @@ def build_parser():
         "--body-part",
         "--date",
         "--facility",
-        "--report",
         "--attachment-id",
     ):
         _add_argument(imaging, name, name[2:].replace("-", " "))
+    imaging.add_argument("--report", default="")
 
     instruction = commands.add_parser("add-instruction")
     for name in (
         "--bundle-id",
         "--category",
         "--language",
-        "--text",
         "--date",
     ):
         _add_argument(instruction, name, name[2:].replace("-", " "))
     instruction.add_argument("--source", default="source not supplied")
+    instruction.add_argument("--text", default="")
 
     cost = commands.add_parser("add-cost")
     for name in (
@@ -154,11 +155,11 @@ def build_parser():
         "--category",
         "--amount",
         "--date",
-        "--source",
     ):
         _add_argument(cost, name, name[2:].replace("-", " "))
     cost.add_argument("--note", default="")
-    cost.add_argument("--source-type", default="reported")
+    cost.add_argument("--source", default="source not supplied")
+    cost.add_argument("--source-type", default="not supplied")
     cost.add_argument("--source-identifier", help="Source reference; defaults to the supplied source text.")
 
     review = commands.add_parser("set-review")
@@ -286,7 +287,7 @@ def _run_command(args, bundle_service, attachment_service, completeness, exporte
             int(args.birth_year),
             _enum_value(Language, args.language, "unknown language"),
         )
-        print(f"Created fictional patient {patient.ID}")
+        print(f"Created patient {patient.ID}")
 
     elif args.command == "create-bundle":
         bundle = bundle_service.create_bundle(
@@ -473,14 +474,14 @@ def main(argv=None):
         )
         return EXIT_SUCCESS
     except StorageError as error:
-        print(f"Storage error: {error}", file=sys.stderr)
+        print(f"Storage error: {error_from_exception(error).as_text()}", file=sys.stderr)
         return EXIT_STORAGE_FAILURE
     except (OSError, sqlite3.Error) as error:
         log_storage_error(args.data_file, "cli_operation", error)
         print("Storage error: operation failed; no internal paths are displayed", file=sys.stderr)
         return EXIT_STORAGE_FAILURE
     except (TypeError, ValueError) as error:
-        print(f"Validation error: {error}", file=sys.stderr)
+        print(f"Validation error: {error_from_exception(error).as_text()}", file=sys.stderr)
         return EXIT_VALIDATION_FAILURE
 
 

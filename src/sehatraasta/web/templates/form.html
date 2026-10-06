@@ -1,0 +1,25 @@
+{% extends 'base.html' %}{% from '_fields.html' import render_fields %}
+{% block content %}
+{% if subject %}<p><strong><bdi dir="auto">{{ subject }}</bdi></strong></p>{% endif %}
+{% if kind=='medication' %}<p class="section-help">{{ t('help.section_medications') }}</p>{% elif kind=='order' %}<p class="section-help">{{ t('help.section_orders') }}</p>{% elif kind=='instruction' %}<p class="section-help">{{ t('help.section_instructions') }}</p>{% endif %}
+<div class="form-intro"><p>{{ t('help.required') }}</p>
+{% if kind=='attachment' %}<p>{{ t('help.file') }}</p><p>{{ t('help.reselect_file') }}</p>
+{% elif kind=='lookup' %}<p>{{ t('sharing.qr_help') }}</p><p><a href="{{ url_for('pages.sharing_help', lang=lang) }}">{{ t('sharing.title') }}</a></p>
+{% elif kind=='backup' %}<p>{{ t('help.backup') }}</p>
+{% elif kind=='review' %}<p>{{ t('help.review') }}</p>
+{% elif kind=='bundle' %}<p>{{ t('help.bundle_id') }}</p>{% if not fields[0].choices %}<p><a href="{{ url_for('pages.patient_new', lang=lang) }}">{{ t('page.patient_new') }}</a></p>{% endif %}
+{% elif kind in ['patient','medication','result','imaging','cost'] %}<p>{{ t('help.generated_id') }}</p>{% endif %}</div>
+{% if errors %}<section class="error-summary" role="alert" tabindex="-1" id="errors" aria-labelledby="error-title"><h2 id="error-title">{{ t('error.summary') }}</h2><ul>{% for error in errors %}<li>{% if error.field %}{% set field=fields|selectattr('name','equalto',error.field)|first %}<a href="#{{ error.field }}">{{ t(field.label) }}: {{ t(error.code) }}</a>{% else %}<a href="#entry-form">{{ t(error.code) }}</a>{% endif %}</li>{% endfor %}</ul></section>{% endif %}
+<form id="entry-form" tabindex="-1" method="post" enctype="multipart/form-data" class="entry-form" {% if kind=='backup' %}data-download{% endif %}>
+<input type="hidden" name="csrf" value="{{ form_token(errors=errors) }}"><input type="hidden" name="had_errors" value="{{ 1 if errors else 0 }}">
+<div class="language-switch"><label for="lang">{{ t('nav.language') }}</label><select id="lang" name="lang">{% for code, info in languages.items() %}<option value="{{ code }}" {{ 'selected' if code==lang else '' }}>{{ info[0] }}</option>{% endfor %}</select><button class="secondary" name="intent" value="language" formnovalidate>{{ t('action.language') }}</button></div>
+<div class="field-grid">{{ render_fields(fields, values, errors, t) }}</div>
+{% if kind=='lookup' and config.ANDROID_APP %}<div class="form-actions" data-qr-scanner data-prompt="{{ t('qr.prompt') }}" data-success="{{ t('qr.success') }}" data-cancelled="{{ t('qr.cancelled') }}" data-invalid="{{ t('qr.invalid') }}" data-unavailable="{{ t('qr.unavailable') }}">
+<button type="button" class="secondary" data-scan-camera>{{ t('qr.camera') }}</button><button type="button" class="secondary" data-scan-image>{{ t('qr.image') }}</button><p role="status" data-scan-status></p></div>{% endif %}
+<div class="form-actions">
+{% if kind=='restore' %}<button name="intent" value="check">{{ t('action.check') }}</button>{% if summary and not restored %}<button name="intent" value="restore">{{ t('action.restore') }}</button>{% endif %}
+{% else %}<button name="intent" value="save">{{ t('action.delete' if kind=='delete' else 'action.backup' if kind=='backup' else 'action.find' if kind=='lookup' else 'action.save') }}</button>{% endif %}
+<a href="{{ back }}">{{ t('action.cancel') }}</a></div>
+<div class="submission" hidden role="status"><p>{{ t('status.working') }}</p><div class="skeleton" aria-hidden="true"><span></span><span></span><span></span></div></div>
+</form>
+{% endblock %}

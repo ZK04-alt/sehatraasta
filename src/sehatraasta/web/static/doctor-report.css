@@ -1,0 +1,29 @@
+@font-face{font-family:ReportArabic;src:url('fonts/NotoSansArabic.ttf') format('truetype');font-display:block}
+*{box-sizing:border-box}html,body{margin:0;background:#fff;color:#111}body{font:15px/1.5 Arial,ReportArabic,sans-serif}body[dir=rtl],html[dir=rtl] body{font-family:ReportArabic,Arial,sans-serif}
+.report-toolbar{padding:16px 24px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;border-bottom:1px solid #ccc;font-size:14px}.report-toolbar a{color:#333}.report-toolbar button{background:#333;color:white;padding:10px 16px;border:0;border-radius:2px;font:inherit}.report-toolbar button:disabled{opacity:.5}.doctor-report{max-width:186mm;padding:24px 12px;margin:0 auto}.patient-heading{border-bottom:2px solid #222;padding-bottom:16px}.patient-heading img{float:inline-end;height:38px;object-fit:contain}.patient-heading h1{font-size:22px;margin:0 0 8px}.patient-heading h2{font-size:20px;margin:0}.patient-heading p{margin:4px 0 0}.report-visit{margin-top:24px}.visit-heading{display:flex;gap:12px;justify-content:space-between;border-bottom:1px solid #aaa;padding-bottom:8px}.visit-heading h2{font-size:18px;margin:0}.visit-heading p{margin:4px 0}.report-qr{margin:0;text-align:center;flex-shrink:0}.qr{width:74px;height:74px}.report-qr figcaption{font-size:9px;max-width:90px}h3{font-size:16px;margin:16px 0 6px}dl{margin:8px 0;padding-bottom:8px;border-bottom:1px solid #ddd}.report-fields{display:grid;grid-template-columns:36% 1fr;gap:3px 12px}dt{font-weight:bold}dd{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}p{overflow-wrap:anywhere}table{width:100%;border-collapse:collapse}th,td{text-align:start;border-bottom:1px solid #ccc;padding:5px;vertical-align:top}.report-note{font-size:11px;border-top:1px solid #aaa;margin-top:24px;padding-top:8px}.document-appendix{break-before:page}.document-pages img{display:block;max-width:100%;height:auto;object-fit:contain}.document-page+.document-page{break-before:page}.document-page{break-inside:avoid;margin:0}.document-page figcaption{font-size:10px;margin-bottom:6px}
+.visit-heading>div{min-width:0;overflow-wrap:anywhere}.patient-heading h2{overflow-wrap:anywhere}.report-qr{width:90px}.report-qr figcaption{overflow-wrap:anywhere}.continuation-identity{display:none}.prepared-date{font-size:11px;color:#333}.document-identity{font-size:11px}
+.report-fields{display:table;table-layout:fixed;margin:8px 0;border-bottom:1px solid #ddd}.report-fields th,.report-fields td{border:0;padding:2px 0;white-space:pre-wrap;overflow-wrap:anywhere}.report-fields th{width:36%;padding-inline-end:12px}.report-fields tr{break-inside:avoid}
+@media print{
+ @page{size:A4;margin:12mm 12mm 22mm;background:#fff}
+ html,body{background:#fff!important;width:auto;min-width:0}
+ body{font-size:10pt}
+ .report-toolbar{display:none!important}
+ .doctor-report{padding:0;margin:0;max-width:none;width:100%;background:#fff!important}
+ .continuation-identity{display:block;position:fixed;bottom:0;left:0;right:0;z-index:1;border-top:1px solid #aaa;padding-top:2mm;font-size:8pt;background:#fff}
+ .patient-heading{padding-bottom:6mm}
+ h2,h3,.visit-heading{break-after:avoid}
+ .visit-heading{break-inside:avoid}
+ dl{break-inside:avoid}
+ .report-fields{break-inside:avoid}
+ dt,dd{break-inside:avoid}
+ .document-pages img{max-height:225mm;width:auto;margin:0 auto}
+ .document-appendix p{margin:0 0 4mm}
+ .document-appendix>h3,.document-appendix>p{display:none}
+ .report-note{font-size:8pt}
+ .qr{width:22mm;height:22mm}
+ .report-qr{width:24mm}
+ html[data-report-ready=no] .doctor-report{display:none}
+ html[data-report-ready=no] .report-toolbar{display:block!important}
+}
+/* Mobile preview rules must not override A4 print layout in Android WebView. */
+@media screen and (max-width:480px){.doctor-report{padding:16px}.report-toolbar{padding:12px}.report-fields tr,.report-fields th,.report-fields td{display:block;width:100%}.report-fields td{padding-bottom:8px}.patient-heading img{width:100px}}

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="opening">Opening SehatRaasta…</string>
+    <string name="opening_failed">SehatRaasta could not open. Close the app and try again.</string>
+</resources>

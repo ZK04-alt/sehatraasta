@@ -491,15 +491,12 @@ def test_cost_entry_rejects_non_finite_amount():
         )
 
 
-def test_cost_entry_rejects_missing_source():
-    with pytest.raises(ValueError, match="missing source"):
-        CostEntry(
-            "CO-001",
-            CostCategory.TRAVEL,
-            Decimal("2500.00"),
-            date(2026, 8, 30),
-            "",
-        )
+def test_cost_entry_marks_missing_source():
+    entry = CostEntry("CO-001", CostCategory.TRAVEL, Decimal("2500.00"),
+                      date(2026, 8, 30), "")
+    assert entry.source == "source not supplied"
+    assert entry.source_type == "not supplied"
+    assert entry.source_identifier == "source not supplied"
 
 
 def test_cost_entry_rejects_unsupported_category():

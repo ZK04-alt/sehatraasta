@@ -43,3 +43,15 @@ secrets/
 *.log
 .DS_Store
 Thumbs.db
+# Android build outputs, machine paths and local signing keys.
+android/.gradle/
+android/**/build/
+android/local.properties
+*.keystore
+*.jks
+output/android/
+output/google-play/
+tmp/
+android/app/build/
+*.pyc
+output/

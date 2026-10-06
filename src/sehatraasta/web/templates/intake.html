@@ -1,0 +1,50 @@
+{% extends 'base.html' %}{% from '_fields.html' import render_fields %}
+{% macro row(group, entry, number) %}
+<fieldset class="intake-row" data-row="{{ entry.key }}">
+  <legend>{{ t('intake.'+group.name) }} <span data-row-number>{{ number }}</span></legend>
+  <input type="hidden" name="{{ group.name }}.rows" value="{{ entry.key }}">
+  <div class="field-grid">{{ render_fields(entry.fields, values, field_errors, t) }}</div>
+  <button type="button" class="text-button remove-row" data-remove-row hidden>{{ t('intake.remove') }} <span class="sr-only">{{ t('intake.'+group.name) }} <span data-row-number>{{ number }}</span></span></button>
+</fieldset>
+{% endmacro %}
+{% block content %}
+<p class="form-intro">{{ t('app.new_help') }}</p>
+<nav class="intake-nav" aria-label="{{ t('intake.sections') }}">
+{% for section in ['patient','referral','medications','orders','results','imaging','instructions','costs'] %}<a href="#section-{{ section }}">{{ t('intake.'+section) }}</a>{% endfor %}
+</nav>
+{% if errors %}<section class="error-summary" role="alert" tabindex="-1" id="errors" aria-labelledby="error-title"><h2 id="error-title">{{ t('error.summary') }}</h2><ul>
+{% for error in errors %}<li><a href="#{{ error.control_id }}">{{ t('intake.'+error.section) }}{% if error.row_number %} {{ error.row_number }}{% endif %}{% if error.label %} · {{ t(error.label) }}{% endif %}: {{ t(error.code) }}</a></li>{% endfor %}
+</ul></section>{% endif %}
+<form id="intake-form" tabindex="-1" method="post" class="entry-form intake-form" novalidate data-intake data-order-label="{{ t('intake.order_row') }}" data-removed-label="{{ t('intake.removed_order') }}" data-removed-message="{{ t('intake.removed') }}" data-autosave-url="{{ url_for('pages.save_unfinished_visit') }}" data-autosave-token="{{ form_token(url_for('pages.save_unfinished_visit')) }}" data-saving="{{ t('visit.saving') }}" data-saved="{{ t('visit.saved_unfinished') }}" data-failed="{{ t('visit.save_failed') }}">
+  <input type="hidden" name="unfinished_id" value="{{ unfinished_id }}"><input type="hidden" name="unfinished_revision" value="{{ unfinished_revision }}">
+  <p class="autosave-status" data-autosave-status role="status">{{ t('visit.saved_unfinished') if unfinished_id else t('visit.autosave_help') }}</p>
+  <input type="hidden" name="csrf" value="{{ form_token(errors=issues) }}"><input type="hidden" name="had_errors" value="{{ 1 if issues else 0 }}">
+  <div class="language-switch"><label for="lang">{{ t('nav.language') }}</label><select id="lang" name="lang">{% for code, info in languages.items() %}<option value="{{ code }}" {{ 'selected' if code==lang else '' }}>{{ info[0] }}</option>{% endfor %}</select><button class="secondary" name="intent" value="language" formnovalidate>{{ t('action.language') }}</button></div>
+  <section class="intake-section" id="section-patient" tabindex="-1"><h2>{{ t('intake.patient') }}</h2>
+    <details class="help-disclosure"><summary>{{ t('app.help') }}</summary><p>{{ t('intake.mode_help') }}</p></details>
+    <label for="mode">{{ t('intake.patient_mode') }}</label>
+    <select id="mode" name="mode" {% if errors|selectattr('control_id','equalto','mode')|list %}aria-invalid="true" aria-describedby="mode-error"{% endif %}>
+      {% if values.get('mode') not in ['new','existing'] %}<option value="{{ values.get('mode', '') }}" selected>{{ values.get('mode') or t('field.choose') }}</option>{% endif %}
+      <option value="new" {{ 'selected' if values.get('mode')=='new' else '' }}>{{ t('intake.new_patient') }}</option><option value="existing" {{ 'selected' if values.get('mode')=='existing' else '' }}>{{ t('intake.existing_patient') }}</option>
+    </select>
+    {% for error in errors if error.control_id=='mode' %}<p class="field-error" id="mode-error">{{ t(error.code) }}</p>{% endfor %}
+    <fieldset data-patient-mode="new"><legend>{{ t('intake.new_patient') }}</legend><div class="field-grid">{{ render_fields(patient_fields, values, field_errors, t) }}</div></fieldset>
+    <fieldset data-patient-mode="existing"><legend>{{ t('intake.existing_patient') }}</legend>{{ render_fields(existing_fields, values, field_errors, t) }}</fieldset>
+  </section>
+  <section class="intake-section" id="section-referral" tabindex="-1"><h2>{{ t('intake.referral') }}</h2><details class="help-disclosure"><summary>{{ t('app.help') }}</summary><p>{{ t('help.bundle_id') }}</p></details><div class="field-grid">{{ render_fields(referral_fields, values, field_errors, t) }}</div></section>
+  <p class="form-intro">{{ t('intake.rows_help') }}</p><noscript><p>{{ t('intake.no_script') }}</p></noscript>
+  {% for group in groups %}<section class="intake-section" id="section-{{ group.name }}" tabindex="-1" data-repeat="{{ group.name }}">
+    <details data-record-section {{ 'open' if group.opened else '' }}>
+    <summary class="record-summary"><h2>{{ t('intake.'+group.name) }}</h2> <span class="optional-tag">{{ t('field.optional') }}</span></summary>
+    <details class="help-disclosure"><summary>{{ t('app.help') }}</summary><p>{{ t('help.section_'+group.name) }}</p></details>
+    <div data-rows>{% for entry in group.entries %}{{ row(group, entry, loop.index) }}{% endfor %}</div>
+    <template data-prototype>{{ row(group, group.prototype, 1) }}</template>
+    <button type="button" class="secondary" data-add-row hidden>{{ t('intake.add') }} <span class="sr-only">{{ t('intake.'+group.name) }}</span></button>
+    </details>
+  </section>{% endfor %}
+  <p class="muted">{{ t('intake.attachments_later') }}</p>
+  <div class="form-actions"><button name="intent" value="save">{{ t('intake.save') }}</button><button class="secondary" name="intent" value="save_later" formnovalidate>{{ t('visit.save_later') }}</button></div>
+  <p class="sr-only" data-row-status role="status"></p>
+  <div class="submission" hidden role="status"><p>{{ t('status.working') }}</p><div class="skeleton" aria-hidden="true"><span></span><span></span><span></span></div></div>
+</form>
+{% endblock %}

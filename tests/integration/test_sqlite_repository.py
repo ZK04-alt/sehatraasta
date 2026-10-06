@@ -74,7 +74,7 @@ def test_initialization_is_repeatable_and_foreign_keys_enabled(tmp_path):
     connection = connect_database(path)
     try:
         assert connection.execute("PRAGMA foreign_keys").fetchone()[0] == 1
-        assert [row[0] for row in connection.execute("SELECT version FROM schema_version ORDER BY version")] == [1, 2]
+        assert [row[0] for row in connection.execute("SELECT version FROM schema_version ORDER BY version")] == [1, 2, 3, 4]
         assert connection.execute("SELECT count(*) FROM patients").fetchone()[0] == 1
         check_database(connection)
     finally:

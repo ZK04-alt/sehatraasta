@@ -1,0 +1,16 @@
+{% extends 'base.html' %}{% block content %}<article class="policy">
+{% if policy=='privacy' %}
+<h2>Local data</h2><p>SehatRaasta stores patient records, referral bundles, reported costs, documents and activity records on the device running the app. Records are not sent to a cloud service.</p>
+<h2>Browser storage</h2><p>A session cookie holds interface language and form protection information. It does not contain patient records and is not a login. Pages are marked no-store.</p>
+<h2>Access</h2><p>The app has no user accounts, access roles or application-level encryption. Protect access to your device. Backups and exports are not encrypted.</p>
+<h2>Files and deletion</h2><p>Removing a patient deletes their referral bundles, records and stored attachments from this device. Separate exports, backups, printouts and restored copies must be removed separately. Interrupted file cleanup may need to be retried. There is no automatic retention schedule.</p>
+<h2>No analytics</h2><p>The app has no analytics, advertising or background telemetry.</p>
+<h2>Camera and selected files</h2><p>The camera is optional and used only when Scan QR is selected. Camera images are processed on the device, not uploaded or kept as patient records. The file picker grants access only to the documents selected for import, storage or backup. Saving a PDF or archive to a cloud-backed folder can send it to that folder's provider; SehatRaasta does not control that provider.</p>
+<h2>Support</h2><p>Report software issues at github.com/ZK04-alt/sehatraasta/issues. Do not include personal information or private documents.</p>
+{% else %}
+<h2>Using SehatRaasta</h2><p>SehatRaasta organizes referral information and supporting documents. It is not a medical device and does not diagnose, treat, cure or prevent a medical condition. It does not recommend treatment, interpret clinical results or determine medical urgency. Consult a qualified healthcare professional for medical advice. Contact local emergency services for urgent medical help.</p>
+<h2>Documents</h2><p>Only add documents you are permitted to store. Text is shown as entered. File checks do not establish clinical accuracy or confirm that a file is harmless. Verify source documents and review status.</p>
+<h2>Records and backups</h2><p>Check saved records and keep verified backups. Device loss, interrupted operations or storage failures can affect access to records.</p>
+<h2>Language</h2><p>Interface language selection does not translate source documents or verify their accuracy.</p>
+<h2>Software</h2><p>Software licensing is governed by the applicable repository license. This notice does not certify regulatory compliance.</p>
+{% endif %}</article>{% endblock %}

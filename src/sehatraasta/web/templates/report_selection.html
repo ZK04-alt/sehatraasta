@@ -1,0 +1,14 @@
+{% extends 'base.html' %}{% block content %}
+<p><strong><bdi dir="auto">{{ patient.name }}</bdi></strong> · {{ patient.birth_year }}</p>
+<p>{{ t('report.choose_help') }}</p>
+{% if error %}<p role="alert" class="error-summary">{{ t(error) }}</p>{% endif %}
+<form method="get" class="entry-form">
+<input type="hidden" name="lang" value="{{ lang }}"><input type="hidden" name="preview" value="yes">
+<fieldset><legend>{{ t('page.bundles') }}</legend>
+{% for visit in patient.referrals|sort(attribute='creation_time') %}<label class="report-choice"><input type="checkbox" name="visit" value="{{ visit.ID }}" {{ 'checked' if visit.ID in chosen else '' }}> <bdi dir="auto">{{ visit.source_facility }}</bdi> · <bdi dir="ltr">{{ visit.creation_time.strftime('%Y-%m-%d %H:%M') }}</bdi>{% if visit.destination %} · <bdi dir="auto">{{ visit.destination }}</bdi>{% endif %}</label>{% endfor %}
+</fieldset>
+<label><input type="checkbox" name="documents" value="yes" checked> {{ t('report.documents') }}</label>
+<label><input type="checkbox" name="costs" value="yes"> {{ t('report.costs') }}</label>
+<p>{{ t('report.privacy') }}</p>
+<div class="form-actions"><button>{{ t('report.preview') }}</button><a href="{{ url_for('pages.patient', patient_id=patient.ID, lang=lang) }}">{{ t('action.cancel') }}</a></div>
+</form>{% endblock %}

@@ -6,8 +6,8 @@ from .completeness_service import CompletenessService
 
 
 SYNTHETIC_WARNING = (
-    "SYNTHETIC DEVELOPMENT DATA ONLY. "
-    "Do not use this file for medical care or clinical decisions."
+    "Referral information as entered. Verify source documents and review status. "
+    "This summary does not provide diagnosis or treatment advice."
 )
 
 
@@ -43,4 +43,8 @@ class ExportService:
             "completeness": completeness,
             "total_cost_pkr": str(bundle.total_cost_pkr()),
         }
+        from sehatraasta.storage import SQLiteRepository
+        if isinstance(self.bundle_service.repository, SQLiteRepository):
+            from .referral_context import ReferralContextService
+            payload['referral_context'] = ReferralContextService(database).get(bundle_id)
         return Path(write_json_safely(output_path, payload))

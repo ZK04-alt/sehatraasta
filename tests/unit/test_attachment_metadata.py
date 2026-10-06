@@ -107,20 +107,23 @@ def test_wrong_enum_for_provenance_type():
 
 def test_missing_source_for_document_and_reported():
     for source_type in [ProvenanceType.DOCUMENT, ProvenanceType.REPORTED]:
-        with pytest.raises(ValueError, match="^missing source$"):
-            Provenance(source_type, None, "REF-001")
+        provenance = Provenance(source_type, None, "REF-001")
+        assert provenance.source is None
+        assert provenance.source_identifier == "REF-001"
 
 
 def test_empty_source_for_document_and_reported():
     for source_type in [ProvenanceType.DOCUMENT, ProvenanceType.REPORTED]:
-        with pytest.raises(ValueError, match="^missing source$"):
-            Provenance(source_type, "", "REF-001")
+        provenance = Provenance(source_type, "", "REF-001")
+        assert provenance.source is None
+        assert provenance.source_identifier == "REF-001"
 
 
 def test_blank_source_for_document_and_reported():
     for source_type in [ProvenanceType.DOCUMENT, ProvenanceType.REPORTED]:
-        with pytest.raises(ValueError, match="^missing source$"):
-            Provenance(source_type, " \t\n ", "REF-001")
+        provenance = Provenance(source_type, " \t\n ", "REF-001")
+        assert provenance.source is None
+        assert provenance.source_identifier == "REF-001"
 
 
 def test_wrong_source_type_for_document_and_reported():
@@ -136,20 +139,23 @@ def test_boolean_source_is_invalid():
 
 def test_missing_identifier_for_document_and_reported():
     for source_type in [ProvenanceType.DOCUMENT, ProvenanceType.REPORTED]:
-        with pytest.raises(ValueError, match="^missing source identifier$"):
-            Provenance(source_type, "Demo source", None)
+        provenance = Provenance(source_type, "Demo source", None)
+        assert provenance.source == "Demo source"
+        assert provenance.source_identifier is None
 
 
 def test_empty_identifier_for_document_and_reported():
     for source_type in [ProvenanceType.DOCUMENT, ProvenanceType.REPORTED]:
-        with pytest.raises(ValueError, match="^missing source identifier$"):
-            Provenance(source_type, "Demo source", "")
+        provenance = Provenance(source_type, "Demo source", "")
+        assert provenance.source == "Demo source"
+        assert provenance.source_identifier is None
 
 
 def test_blank_identifier_for_document_and_reported():
     for source_type in [ProvenanceType.DOCUMENT, ProvenanceType.REPORTED]:
-        with pytest.raises(ValueError, match="^missing source identifier$"):
-            Provenance(source_type, "Demo source", " \t\n ")
+        provenance = Provenance(source_type, "Demo source", " \t\n ")
+        assert provenance.source == "Demo source"
+        assert provenance.source_identifier is None
 
 
 def test_wrong_identifier_type_for_document_and_reported():
@@ -178,36 +184,21 @@ def test_source_text_is_preserved_without_rewriting():
     assert provenance.source_identifier == "  Demo-Ref  "
 
 
-def test_not_supplied_rejects_source():
-    with pytest.raises(ValueError, match="^source details conflict with not supplied$"):
-        Provenance(ProvenanceType.NOT_SUPPLIED, "Demo source", None)
-
-
-def test_not_supplied_rejects_identifier():
-    with pytest.raises(ValueError, match="^source details conflict with not supplied$"):
-        Provenance(ProvenanceType.NOT_SUPPLIED, None, "DOC-001")
-
-
-def test_not_supplied_rejects_both_details():
-    with pytest.raises(ValueError, match="^source details conflict with not supplied$"):
-        Provenance(ProvenanceType.NOT_SUPPLIED, "Demo source", "DOC-001")
-
-
-def test_not_supplied_rejects_empty_source():
-    with pytest.raises(ValueError, match="^source details conflict with not supplied$"):
-        Provenance(ProvenanceType.NOT_SUPPLIED, "", None)
-
-
-def test_not_supplied_rejects_empty_identifier():
-    with pytest.raises(ValueError, match="^source details conflict with not supplied$"):
-        Provenance(ProvenanceType.NOT_SUPPLIED, None, "")
+@pytest.mark.parametrize("source,reference", [
+    ("Demo source", None), (None, "DOC-001"), ("Demo source", "DOC-001"),
+    ("", None), (None, ""),
+])
+def test_unknown_source_type_keeps_available_details(source, reference):
+    provenance = Provenance(ProvenanceType.NOT_SUPPLIED, source, reference)
+    assert provenance.source == (source or None)
+    assert provenance.source_identifier == (reference or None)
 
 
 def test_not_supplied_rejects_false_source():
-    with pytest.raises(ValueError, match="^source details conflict with not supplied$"):
+    with pytest.raises(ValueError, match="^invalid source$"):
         Provenance(ProvenanceType.NOT_SUPPLIED, False, None)
 
 
 def test_not_supplied_rejects_zero_identifier():
-    with pytest.raises(ValueError, match="^source details conflict with not supplied$"):
+    with pytest.raises(ValueError, match="^invalid source identifier$"):
         Provenance(ProvenanceType.NOT_SUPPLIED, None, 0)

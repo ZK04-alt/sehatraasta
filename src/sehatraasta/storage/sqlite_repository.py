@@ -38,7 +38,10 @@ class SQLiteRepository(PatientRepository):
     def save_patient(self, patient):
         self._save(patient, adding=False)
 
-    def _save(self, patient, adding):
+    def complete_intake(self, patient, adding, unfinished):
+        self._save(patient, adding, unfinished)
+
+    def _save(self, patient, adding, unfinished=None):
         patient.checks()
         if patient.birth_year > 9223372036854775807:
             raise ValueError("birth year is too large")
@@ -48,6 +51,15 @@ class SQLiteRepository(PatientRepository):
         try:
             with connection:
                 connection.execute("BEGIN IMMEDIATE")
+                if unfinished is not None:
+                    removed = connection.execute('DELETE FROM visit_drafts WHERE draft_id = ? AND revision = ?', unfinished)
+                    if removed.rowcount != 1:
+                        raise ValueError('unfinished visit changed; reopen before saving')
+                # Context is stored separately from the domain object's child
+                # lists. Keep it when those rows are rebuilt in this transaction.
+                contexts = connection.execute("""SELECT c.* FROM referral_context c
+                    JOIN referral_bundles b USING(bundle_id) WHERE b.patient_id = ?""",
+                    (patient.ID,)).fetchall()
                 for bundle in patient.referrals:
                     for item in bundle.attachments:
                         saved = connection.execute("SELECT a.* FROM attachments a JOIN managed_attachments m USING(attachment_id) WHERE a.attachment_id = ?", (item.ID,)).fetchone()
@@ -88,6 +100,13 @@ class SQLiteRepository(PatientRepository):
                     connection.execute("DELETE FROM referral_bundles WHERE patient_id = ?", (patient.ID,))
                 for bundle in patient.referrals:
                     self._write_bundle(connection, patient.ID, bundle)
+                retained_ids = {bundle.ID for bundle in patient.referrals}
+                for context in contexts:
+                    if context['bundle_id'] in retained_ids:
+                        connection.execute("""INSERT INTO referral_context
+                            (bundle_id, medical_history, allergies, referral_reason, referral_notes,
+                             department, follow_up_date, source, updated_at)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""", tuple(context))
             patient._storage_revision = revision
         except sqlite3.IntegrityError as error:
             log_storage_error(self.path, "save_patient", error)

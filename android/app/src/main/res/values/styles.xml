@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="SehatRaastaTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:colorAccent">#48563B</item>
+        <item name="android:windowBackground">#F2EEE5</item>
+        <item name="android:statusBarColor">#FBF8F0</item>
+        <item name="android:navigationBarColor">#FBF8F0</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+    <color name="launcher_background">#F2EEE5</color>
+</resources>

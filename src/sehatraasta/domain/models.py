@@ -11,7 +11,7 @@ from .enums import (
     ReferralStatus,
     ReviewCategory,
 )
-from .validation import validate_id
+from .validation import validate_id, validate_record_id
 
 
 @dataclass
@@ -41,8 +41,6 @@ class MedicationItem:
             raise ValueError("missing dose")
         if not isinstance(self.route, str):
             raise ValueError("invalid route")
-        if not self.route.strip():
-            raise ValueError("missing route")
         if not isinstance(self.frequency, str):
             raise ValueError("invalid frequency")
         if not self.frequency.strip():
@@ -53,18 +51,15 @@ class MedicationItem:
             raise ValueError("missing duration")
         if not isinstance(self.instructions, str):
             raise ValueError("invalid instructions")
-        if not self.instructions.strip():
-            raise ValueError("missing instructions")
         if not isinstance(self.source, str):
             raise ValueError("invalid source")
         if not self.source.strip():
-            raise ValueError("missing source")
+            self.source = "source not supplied"
         if not isinstance(self.ID, str):
             raise ValueError("invalid ID")
         if not self.ID.strip():
             raise ValueError("missing ID")
-        if not re.fullmatch(r"[A-Z]{2}-\d{3}", self.ID):
-            raise ValueError("invalid ID")
+        validate_record_id(self.ID, 'MD')
 
     def __post_init__(self):
         self.checks()
@@ -92,8 +87,6 @@ class Encounter:
             raise ValueError("missing clinician display text")
         if not isinstance(self.source_note, str):
             raise ValueError("invalid source note")
-        if not self.source_note.strip():
-            raise ValueError("missing source note")
 
     def __post_init__(self):
         self.checks()
@@ -116,12 +109,10 @@ class Instruction:
             raise ValueError("unknown language")
         if not isinstance(self.text, str):
             raise ValueError("invalid text")
-        if not self.text.strip():
-            raise ValueError("missing text")
         if not isinstance(self.source, str):
             raise ValueError("invalid source")
         if not self.source.strip():
-            raise ValueError("missing source")
+            self.source = "source not supplied"
         if isinstance(self.date, datetime):
             raise ValueError("invalid date")
         if not isinstance(self.date, date):
@@ -160,22 +151,21 @@ class ImagingItem:
             raise ValueError("missing facility")
         if not isinstance(self.report, str):
             raise ValueError("invalid report")
-        if not self.report.strip():
-            raise ValueError("missing report")
         if not isinstance(self.ID, str):
             raise ValueError("invalid ID")
         if not self.ID.strip():
             raise ValueError("missing ID")
-        if not re.fullmatch(r"[A-Z]{2}-\d{3}", self.ID):
-            raise ValueError("invalid ID")
+        validate_record_id(self.ID, 'IM')
         if self.Attachment_ID is None:
             return
         if not isinstance(self.Attachment_ID, str):
             raise ValueError("invalid attachment ID")
         if not self.Attachment_ID.strip():
             raise ValueError("missing attachment ID")
-        if not re.fullmatch(r"[A-Z]{2}-\d{3}", self.Attachment_ID):
-            raise ValueError("invalid attachment ID")
+        try:
+            validate_record_id(self.Attachment_ID, 'AT', extended=True)
+        except ValueError:
+            raise ValueError("invalid attachment ID") from None
 
     def __post_init__(self):
         self.checks()
@@ -200,7 +190,7 @@ class InvestigationOrder:
         if not isinstance(self.source, str):
             raise ValueError("invalid source")
         if not self.source.strip():
-            raise ValueError("missing source")
+            self.source = "source not supplied"
         if not isinstance(self.workflow_status, InvestigationOrderStatus):
             raise ValueError("unknown investigation order status")
         if not self.workflow_status:
@@ -231,17 +221,14 @@ class DiagnosticResult:
         if not isinstance(self.source, str):
             raise ValueError("invalid source")
         if not self.source.strip():
-            raise ValueError("missing source")
+            self.source = "source not supplied"
         if not isinstance(self.ID, str):
             raise ValueError("invalid ID")
         if not self.ID.strip():
             raise ValueError("missing ID")
-        if not re.fullmatch(r"[A-Z]{2}-\d{3}", self.ID):
-            raise ValueError("invalid ID")
+        validate_record_id(self.ID, 'DR')
         if not isinstance(self.interpretation, str):
             raise ValueError("invalid interpretation")
-        if not self.interpretation.strip():
-            raise ValueError("missing interpretation")
         if self.investigation_order is not None:
             if not isinstance(self.investigation_order, InvestigationOrder):
                 raise ValueError("invalid investigation order")
@@ -297,7 +284,7 @@ class Attachment:
     def checks(self):
         if not isinstance(self.generated_stored_name, str):
             raise ValueError("invalid stored name")
-        validate_id(self.ID)
+        validate_record_id(self.ID, 'AT', extended=True)
         if not isinstance(self.category, str):
             raise ValueError("invalid category")
         if not self.category.strip():
@@ -321,7 +308,7 @@ class Attachment:
         if not isinstance(self.source, str):
             raise ValueError("invalid source")
         if not self.source.strip():
-            raise ValueError("missing source")
+            self.source = "source not supplied"
         if isinstance(self.size, bool) or not isinstance(self.size, (int, float)):
             raise ValueError("invalid size")
         if self.size <= 0:
@@ -339,14 +326,14 @@ class CostEntry:
     date: date
     source: str
     note: str = ""
-    source_type: str = "reported"
+    source_type: str = "not supplied"
     source_identifier: str | None = None
     reported_by_label: str = ""
 
     def checks(self):
         if not isinstance(self.reported_by_label, str):
             raise ValueError("invalid reported-by label")
-        validate_id(self.ID)
+        validate_record_id(self.ID, 'CE', extended=True)
         if not isinstance(self.category, CostCategory):
             raise ValueError("unsupported cost category")
         if isinstance(self.amount, bool) or not isinstance(self.amount, Decimal):
@@ -362,13 +349,17 @@ class CostEntry:
         if not isinstance(self.source, str):
             raise ValueError("invalid source")
         if not self.source.strip():
-            raise ValueError("missing source")
+            self.source = "source not supplied"
         if self.source_identifier is None:
             self.source_identifier = self.source
-        if not isinstance(self.source_type, str) or not self.source_type.strip():
-            raise ValueError("missing source type")
-        if not isinstance(self.source_identifier, str) or not self.source_identifier.strip():
-            raise ValueError("missing source identifier")
+        if not isinstance(self.source_type, str):
+            raise ValueError("invalid source type")
+        if not self.source_type.strip():
+            self.source_type = "not supplied"
+        if not isinstance(self.source_identifier, str):
+            raise ValueError("invalid source identifier")
+        if not self.source_identifier.strip():
+            self.source_identifier = "source not supplied"
         if not isinstance(self.note, str):
             raise ValueError("invalid note")
 
@@ -400,8 +391,8 @@ class AuditEvent:
             raise ValueError("invalid ID")
         if not self.ID.strip():
             raise ValueError("missing ID")
-        if not re.fullmatch(r"[A-Z]{2}-\d{3}", self.ID):
-            raise ValueError("invalid ID")
+        if not re.fullmatch(r"[A-Z]{2}-[2-9A-HJ-NP-Z]{6}", self.ID):
+            validate_id(self.ID)
         if not isinstance(self.actor_label, str):
             raise ValueError("invalid actor label")
         if not self.actor_label.strip():
@@ -449,8 +440,6 @@ class ReferralBundle:
             raise ValueError("missing source facility")
         if not isinstance(self.destination, str):
             raise ValueError("invalid destination")
-        if not self.destination.strip():
-            raise ValueError("missing destination")
         if not isinstance(self.status, ReferralStatus):
             raise ValueError("unknown referral status")
         if not isinstance(self.encounters, list):
@@ -617,7 +606,7 @@ class Patient:
     def checks(self):
         if not isinstance(self.name, str) or self.name.isnumeric():
             raise ValueError("invalid name")
-        validate_id(self.ID)
+        validate_record_id(self.ID, 'PT', extended=True)
         if not self.name.strip():
             raise ValueError("missing name")
         if not isinstance(self.birth_year, int) or isinstance(self.birth_year, bool):

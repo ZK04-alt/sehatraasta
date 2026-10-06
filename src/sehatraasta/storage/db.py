@@ -8,6 +8,8 @@ from .errors import StorageError, log_storage_error
 
 MIGRATION_PATH = Path(__file__).parent / "migrations" / "001_initial.sql"
 ATTACHMENT_MIGRATION = MIGRATION_PATH.with_name("002_attachments.sql")
+PASSPORT_MIGRATION = MIGRATION_PATH.with_name("003_passport.sql")
+UNFINISHED_MIGRATION = MIGRATION_PATH.with_name("004_unfinished_visits.sql")
 TABLE_NAMES = frozenset({
     "schema_version", "patients", "referral_bundles", "audit_events",
     "instructions", "cost_entries", "attachments", "imaging_items",
@@ -39,11 +41,15 @@ def check_database(connection):
         "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"
     )}
     versions = [row[0] for row in connection.execute("SELECT version FROM schema_version")]
-    if versions not in ([1], [1, 2]):
+    if versions not in ([1], [1, 2], [1, 2, 3], [1, 2, 3, 4]):
         raise StorageError("unsupported database version")
     expected_tables = TABLE_NAMES
     if 2 in versions:
         expected_tables = TABLE_NAMES | {"managed_attachments", "file_audit_events", "bundle_tokens"}
+    if 3 in versions:
+        expected_tables = expected_tables | {"referral_context"}
+    if 4 in versions:
+        expected_tables = expected_tables | {"visit_drafts", "visit_draft_fields"}
     if tables != expected_tables:
         raise StorageError("unrecognized or incomplete database schema")
     # Also reject a database that has the right table names but different columns.
@@ -52,6 +58,10 @@ def check_database(connection):
         template.executescript(MIGRATION_PATH.read_text(encoding="utf-8"))
         if 2 in versions:
             template.executescript(ATTACHMENT_MIGRATION.read_text(encoding="utf-8"))
+        if 3 in versions:
+            template.executescript(PASSPORT_MIGRATION.read_text(encoding="utf-8"))
+        if 4 in versions:
+            template.executescript(UNFINISHED_MIGRATION.read_text(encoding="utf-8"))
         expected = template.execute(
             "SELECT name, sql FROM sqlite_master WHERE sql IS NOT NULL ORDER BY name"
         ).fetchall()
@@ -96,6 +106,28 @@ def initialize_database(path):
             if versions == [1]:
                 statement = ""
                 for line in ATTACHMENT_MIGRATION.read_text(encoding="utf-8").splitlines():
+                    statement += line + "\n"
+                    if sqlite3.complete_statement(statement):
+                        sql = statement.strip()
+                        if sql not in ("BEGIN TRANSACTION;", "COMMIT;"):
+                            connection.execute(sql)
+                        statement = ""
+                check_database(connection)
+            versions = [row[0] for row in connection.execute("SELECT version FROM schema_version")]
+            if versions == [1, 2]:
+                statement = ""
+                for line in PASSPORT_MIGRATION.read_text(encoding="utf-8").splitlines():
+                    statement += line + "\n"
+                    if sqlite3.complete_statement(statement):
+                        sql = statement.strip()
+                        if sql not in ("BEGIN TRANSACTION;", "COMMIT;"):
+                            connection.execute(sql)
+                        statement = ""
+                check_database(connection)
+            versions = [row[0] for row in connection.execute("SELECT version FROM schema_version")]
+            if versions == [1, 2, 3]:
+                statement = ""
+                for line in UNFINISHED_MIGRATION.read_text(encoding="utf-8").splitlines():
                     statement += line + "\n"
                     if sqlite3.complete_statement(statement):
                         sql = statement.strip()

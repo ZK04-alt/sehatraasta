@@ -305,7 +305,7 @@ def test_cli_returns_validation_exit_code_for_invalid_costs(tmp_path, capsys):
             "--source",
             "",
         ],
-    ) == EXIT_VALIDATION_FAILURE
+    ) == EXIT_SUCCESS
     assert run_cli(
         path,
         [

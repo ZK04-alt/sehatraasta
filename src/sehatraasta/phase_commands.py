@@ -1,5 +1,6 @@
 """CLI presentation only. Validation and persistence live in services."""
 from datetime import date
+from argparse import SUPPRESS
 
 from sehatraasta.domain import AttachmentCategory, Provenance, ProvenanceType
 from sehatraasta.services.dataset_backup import DatasetBackupService
@@ -9,10 +10,10 @@ from sehatraasta.services.qr_service import QRService
 
 
 def add_commands(commands):
-    intake = commands.add_parser("import-file", help="Copy a validated synthetic attachment.")
+    intake = commands.add_parser("import-file", help="Copy a validated attachment.")
     for name in ("bundle-id", "id", "file", "category", "date"):
         intake.add_argument("--" + name, required=True)
-    intake.add_argument("--synthetic", action="store_true", help="Confirm fictional, non-clinical content only.")
+    intake.add_argument("--synthetic", action="store_true", help=SUPPRESS)
     intake.add_argument("--source-type", choices=[item.value for item in ProvenanceType], default="not supplied")
     intake.add_argument("--source")
     intake.add_argument("--source-identifier")
@@ -49,7 +50,7 @@ def add_commands(commands):
 def restore_command(args):
     backup = DatasetBackupService(args.data_file)
     summary = backup.dry_run(args.archive)
-    print("Validated synthetic backup:", summary)
+    print("Validated backup:", summary)
     if args.confirm:
         if not args.destination:
             raise ValueError("choose a new destination folder")
@@ -70,7 +71,7 @@ def run_command(args, bundles):
                           Provenance(ProvenanceType(args.source_type), args.source, args.source_identifier),
                           args.synthetic, args.order_id, args.result_id, args.imaging_id,
                           args.instruction_id, args.medication_list)
-        print("Stored synthetic attachment", args.id)
+        print("Stored attachment", args.id)
     elif args.command == "download-file":
         files.download(args.id, args.output)
         print("Downloaded attachment", args.id)
@@ -88,7 +89,7 @@ def run_command(args, bundles):
     elif args.command == "lookup-short-id":
         print("Bundle:", QRService(args.data_file).lookup_short(args.id))
     elif args.command == "backup-dataset":
-        print("Created synthetic backup:", DatasetBackupService(args.data_file).create(args.output_folder))
+        print("Created backup:", DatasetBackupService(args.data_file).create(args.output_folder))
     elif args.command == "file-audit":
         for row in files.audit.list_events(args.bundle_id):
             print(row["attachment_id"], row["occurred_at"], row["action"], row["outcome"])

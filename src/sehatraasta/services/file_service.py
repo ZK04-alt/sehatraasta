@@ -13,7 +13,7 @@ import re
 import sqlite3
 
 from sehatraasta.domain import AttachmentCategory, Provenance, ProvenanceType
-from sehatraasta.domain.validation import validate_id
+from sehatraasta.domain.validation import validate_record_id
 from sehatraasta.storage.audit_repository import AuditRepository
 from sehatraasta.storage.db import connect_database
 from sehatraasta.storage.errors import StorageError, log_storage_error
@@ -54,10 +54,10 @@ class FileService:
     def import_file(self, bundle_id, attachment_id, source_path, category,
                     attachment_date, provenance, synthetic=False, order_id=None,
                     result_id=None, imaging_id=None, instruction_id=None,
-                    medication_list=False):
-        if synthetic is not True:
-            raise ValueError("confirm that the file contains only synthetic data")
-        validate_id(attachment_id)
+                    medication_list=False, original_name=None):
+        # Retain the legacy keyword for compatibility with existing callers.
+        # File validation is independent of labels describing the dataset.
+        validate_record_id(attachment_id, 'AT', extended=True)
         if not isinstance(category, AttachmentCategory):
             raise ValueError("unsupported attachment category")
         if not isinstance(provenance, Provenance):
@@ -74,7 +74,9 @@ class FileService:
         try:
             content, extension, mime = read_source(source_path)
             digest = hashlib.sha256(content).hexdigest()
-            name = Path(source_path).name
+            name = Path(source_path).name if original_name is None else original_name
+            if validate_attachment_filename(name) != extension:
+                raise ValueError("attachment filename extension does not match file")
             stored_name = generate_attachment_stored_name(extension)
             with connection:
                 connection.execute("BEGIN IMMEDIATE")

@@ -25,6 +25,7 @@ TABLES = (
     "instructions", "attachments", "investigation_orders", "diagnostic_results",
     "imaging_items", "cost_entries", "category_reviews", "audit_events",
     "managed_attachments", "file_audit_events", "bundle_tokens",
+    "referral_context", "visit_drafts", "visit_draft_fields",
 )
 MAX_BYTES = 100 * 1024 * 1024
 
@@ -76,7 +77,7 @@ class DatasetBackupService:
     def create(self, output_folder):
         folder = Path(output_folder)
         folder.mkdir(parents=True, exist_ok=True)
-        target = folder / ("synthetic-backup-" + uuid4().hex + ".zip")
+        target = folder / ("sehatraasta-backup-" + uuid4().hex + ".zip")
         connection = connect_database(self.database)
         temporary = None
         try:
@@ -91,7 +92,7 @@ class DatasetBackupService:
                     with service._path(row["stored_name"]).open("rb") as stream:
                         members["attachments/" + row["stored_name"]] = stream.read(5242881)
                 if sum(len(value) for value in members.values()) > MAX_BYTES or len(members) > 999:
-                    raise ValueError("dataset exceeds synthetic backup limits")
+                    raise ValueError("dataset exceeds backup limits")
                 check_files(self.database, {key: value for key, value in members.items() if key != "dataset.json"})
                 manifest = {key: hashlib.sha256(value).hexdigest() for key, value in members.items()}
                 with tempfile.NamedTemporaryFile(dir=folder, suffix=".tmp", delete=False) as stream:
@@ -104,7 +105,7 @@ class DatasetBackupService:
             temporary.rename(target)
             return target.name
         except (OSError, sqlite3.Error, BadZipFile) as error:
-            raise StorageError("could not create complete synthetic backup") from None
+            raise StorageError("could not create complete backup") from None
         finally:
             connection.close()
             if temporary is not None:
@@ -134,11 +135,20 @@ class DatasetBackupService:
                 if hashlib.sha256(content).hexdigest() != manifest[name]:
                     raise ValueError()
             document = json.loads(members.pop("dataset.json"))
-            if type(document["version"]) is not int or document["version"] != 2 or document["synthetic_only"] is not True or set(document["tables"]) != set(TABLES):
+            old_tables = set(TABLES) - {'referral_context', 'visit_drafts', 'visit_draft_fields'}
+            previous_tables = set(TABLES) - {'visit_drafts', 'visit_draft_fields'}
+            if type(document["version"]) is not int or document["version"] != 2 or document["synthetic_only"] is not True or set(document["tables"]) not in (old_tables, previous_tables, set(TABLES)):
                 raise ValueError()
+            if 'referral_context' not in document['tables']:
+                document['tables']['referral_context'] = []
+                document['tables']['schema_version'].append({'version': 3, 'applied_at': 'legacy backup migration'})
+            if 'visit_drafts' not in document['tables']:
+                document['tables']['visit_drafts'] = []
+                document['tables']['visit_draft_fields'] = []
+                document['tables']['schema_version'].append({'version': 4, 'applied_at': 'legacy backup migration'})
             return document["tables"], members
         except (OSError, BadZipFile, RuntimeError, KeyError, TypeError, ValueError, StorageError, UnicodeError):
-            raise ValueError("invalid or corrupt synthetic backup") from None
+            raise ValueError("invalid or corrupt backup") from None
 
     def _restore_staged(self, folder, tables, members):
         database = folder / "sehatraasta.sqlite"
@@ -163,6 +173,13 @@ class DatasetBackupService:
             connection.close()
         # Domain validation runs in addition to relational constraints.
         SQLiteRepository(database).list_patients()
+        from .referral_context import validate_context
+        for context in tables['referral_context']:
+            validate_context(context)
+        from .unfinished_visit_service import UnfinishedVisitService
+        unfinished = UnfinishedVisitService(database)
+        for row in tables['visit_drafts']:
+            unfinished.get(row['draft_id'])
         check_files(database, members)
         service = FileService(database)
         if members:
@@ -170,7 +187,7 @@ class DatasetBackupService:
         for name, content in members.items():
             service._path(name[len("attachments/"):]).write_bytes(content)
         return {"patients": len(tables["patients"]), "bundles": len(tables["referral_bundles"]),
-                "attachments": len(members), "rows": sum(len(rows) for rows in tables.values()),
+                "attachments": len(members), "unfinished": len(tables['visit_drafts']), "rows": sum(len(rows) for rows in tables.values()),
                 "total_paisa": sum(row["amount_paisa"] for row in tables["cost_entries"])}
 
     def dry_run(self, archive):

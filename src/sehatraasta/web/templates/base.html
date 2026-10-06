@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="{{ lang }}" dir="{{ direction }}">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ t(title) }} | SehatRaasta</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='interface.css') }}">
+  <script defer src="{{ url_for('static', filename='app.js') }}"></script>
+</head>
+<body class="interface-app {{ 'android-app' if config.get('ANDROID_APP') else 'web-app' }} {{ 'print-view' if printing|default(false) else '' }}">
+<a class="skip" href="#main">{{ t('nav.skip') }}</a>
+<header class="masthead">
+  <a class="brand" href="{{ url_for('pages.queue', lang=lang) }}"><img src="{{ url_for('static', filename='wordmark.svg') }}" width="220" height="64" alt="SehatRaasta"></a>
+  <details class="app-menu"><summary>{{ t('app.menu') }}</summary><nav aria-label="{{ t('app.menu') }}">{% for endpoint, key in [('sharing_help','sharing.title'),('passport_import','page.passport_import'),('backup','page.backup'),('restore','page.restore')] %}<a href="{{ url_for('pages.'+endpoint, lang=lang) }}">{{ t(key) }}</a>{% endfor %}<a href="/terms?lang={{ lang }}">{{ t('page.terms') }}</a><a href="/privacy?lang={{ lang }}">{{ t('page.privacy') }}</a></nav></details>
+  {% if fields is not defined %}<nav class="language-nav" aria-label="{{ t('nav.language') }}">{% for code, info in languages.items() %}<a href="{{ language_urls[code] }}" lang="{{ code }}" {% if code==lang %}aria-current="true"{% endif %}>{{ info[0] }}</a>{% endfor %}</nav>{% endif %}
+</header>
+<div class="workspace">
+<aside class="sidebar"><nav aria-label="SehatRaasta">
+  {% set navigation = [('queue','app.referrals'),('patients','page.patients'),('lookup','app.scan')] %}
+  {% for endpoint, key in navigation %}
+  <a href="{{ url_for('pages.'+endpoint, lang=lang) }}" {% if request.endpoint=='pages.'+endpoint or (((endpoint=='queue' and request.path.startswith('/bundles')) or (endpoint=='patients' and request.path.startswith('/patients')))) %}aria-current="page"{% endif %}>{{ t(key) }}</a>
+  {% endfor %}
+</nav></aside>
+<main id="main" tabindex="-1">
+  {% if printing|default(false) %}<table class="print-document" role="presentation"><thead><tr><td>SehatRaasta · <bdi dir="ltr">{{ bundle.ID }}</bdi></td></tr></thead><tbody><tr><td>{% endif %}
+  <div class="page-heading"><h1>{{ t('app.referrals' if title=='page.bundles' else title) }}</h1></div>
+  {% for message in get_flashed_messages() %}<p role="status" class="status">{{ t(message) }}</p>{% endfor %}
+  {% block content %}{% endblock %}
+  {% if printing|default(false) %}</td></tr></tbody></table>{% endif %}
+</main>
+</div>
+<footer class="site-footer"><nav><a href="/terms?lang={{ lang }}">{{ t('page.terms') }}</a><a href="/privacy?lang={{ lang }}">{{ t('page.privacy') }}</a></nav></footer>
+<script src="{{ url_for('static', filename='visit-autosave.js') }}" defer></script>
+</body></html>

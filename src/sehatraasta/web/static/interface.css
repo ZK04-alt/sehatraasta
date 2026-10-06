@@ -1,0 +1,133 @@
+/* Shared brand and touch-friendly interface. Print layouts stay in app.css. */
+@font-face { font-family: "Public Sans"; src: url("fonts/PublicSans.ttf") format("truetype"); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: "Libre Franklin"; src: url("fonts/LibreFranklin.ttf") format("truetype"); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: "Noto Sans Arabic"; src: url("fonts/NotoSansArabic.ttf") format("truetype"); font-weight: 100 900; font-display: swap; }
+@media screen {
+  .interface-app {
+    --paper: #F2EEE5; --surface: #FBF8F0; --ink: #303A2B; --muted: #59634F;
+    --teal: #48563B; --line: #A4AC97; --focus: #966244; --action-pressed: #34402A;
+    font-family: "Public Sans", "Noto Sans Arabic", sans-serif; line-height: 1.55;
+    padding-block-end: 74px;
+  }
+  .interface-app:lang(ur), .interface-app:lang(ps) { font-family: "Noto Sans Arabic", "Public Sans", sans-serif; line-height: 1.8; }
+  .interface-app h1, .interface-app h2, .interface-app h3 { font-family: "Libre Franklin", "Noto Sans Arabic", sans-serif; }
+  .interface-app:lang(ur) h1, .interface-app:lang(ur) h2, .interface-app:lang(ur) h3, .interface-app:lang(ps) h1, .interface-app:lang(ps) h2, .interface-app:lang(ps) h3 { font-family: "Noto Sans Arabic", sans-serif; }
+  .interface-app a, .interface-app button, .interface-app summary, .interface-app label, .interface-app input, .interface-app select, .interface-app textarea { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+  .interface-app input, .interface-app textarea { caret-color: var(--teal); }
+  .interface-app input, .interface-app select, .interface-app textarea, .interface-app button, .interface-app .button { min-block-size: 52px; border-radius: 3px; }
+  .interface-app input, .interface-app select, .interface-app textarea, .interface-app .secondary { border-color: var(--muted); }
+  .interface-app input[type=checkbox] { min-block-size: 24px; accent-color: var(--teal); }
+  .interface-app button:active, .interface-app .button:active { background: var(--action-pressed); color: var(--surface); }
+  .interface-app a:not(.button):active, .interface-app summary:active { background: var(--paper); color: var(--action-pressed); }
+  .interface-app main:focus:not(:focus-visible), .interface-app .intake-section:focus:not(:focus-visible), .interface-app #intake-form:focus:not(:focus-visible), .interface-app #entry-form:focus:not(:focus-visible) { outline: none; }
+  .interface-app a:focus, .interface-app button:focus, .interface-app summary:focus,
+  .interface-app input:focus, .interface-app select:focus, .interface-app textarea:focus,
+  .interface-app main:focus, .interface-app .intake-section:focus, .interface-app #intake-form:focus,
+  .interface-app #entry-form:focus { outline: none; }
+  .interface-app input:focus, .interface-app textarea:focus, .interface-app select:focus { border-color: var(--teal); }
+  .interface-app :focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+  .interface-app.keyboard-navigation :focus { outline: 3px solid var(--focus); outline-offset: 3px; }
+  .interface-app .error-summary:focus { outline: 3px solid var(--focus); }
+  .interface-app .masthead { min-block-size: 80px; padding: .4rem 1.25rem .65rem; gap: 0 .75rem; flex-wrap: wrap; border-block-start: 0; }
+  .interface-app .brand { flex: 1; min-inline-size: 0; }
+  .interface-app .brand img { inline-size: 220px; max-inline-size: 100%; }
+  .interface-app .language-nav { flex: 0 0 100%; inline-size: 100%; justify-content: flex-start; gap: .5rem; margin: 0; }
+  .interface-app .language-nav a { min-block-size: 44px; padding-inline: .75rem; font-size: .9rem; text-decoration: none; }
+  .interface-app .language-nav a[aria-current] { text-decoration: underline; text-decoration-color: var(--focus); text-decoration-thickness: 2px; }
+  .interface-app .app-menu { flex: 0 0 auto; margin: 0; position: relative; }
+  .interface-app .app-menu > summary { display: flex; align-items: center; min-block-size: 48px; padding: .5rem; color: var(--teal); font-weight: 600; list-style: none; }
+  .interface-app .app-menu > summary::-webkit-details-marker { display: none; }
+  .interface-app .app-menu > nav { position: absolute; right: 0; top: 100%; z-index: 4; width: 280px; max-width: calc(100vw - 2rem); background: var(--surface); border: 1px solid var(--muted); display: grid; padding: .5rem; }
+  .interface-app[dir=rtl] .app-menu > nav, [dir=rtl] .interface-app .app-menu > nav { right: auto; left: 0; }
+  .interface-app .app-menu a { padding: .9rem; min-block-size: 52px; text-decoration: none; border-block-end: 1px solid var(--line); }
+  .interface-app .workspace { display: block; min-block-size: calc(100vh - 215px); }
+  .interface-app .sidebar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 3; padding: .3rem .5rem; background: var(--surface); border: 0; border-block-start: 1px solid var(--line); }
+  .interface-app .skip:focus { top: auto; bottom: 82px; left: 1rem; right: 1rem; inset-block-start: auto; inset-inline-start: 1rem; border: 1px solid var(--teal); }
+  .interface-app .sidebar nav { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: .35rem; }
+  .interface-app.keyboard-open .sidebar { display: none; }
+  .interface-app.keyboard-open { padding-block-end: 0; }
+  .interface-app .sidebar a { display: flex; justify-content: center; align-items: center; min-block-size: 58px; padding: .4rem; font-size: .88rem; line-height: 1.4; text-align: center; }
+  .interface-app .sidebar a[aria-current] { color: var(--teal); background: var(--paper); border-block-end: 2px solid var(--teal); }
+  .interface-app main { margin-inline: auto; padding: 1.5rem 1.25rem 2rem; max-inline-size: 900px; }
+  .interface-app h1 { font-size: 27px; line-height: 1.3; font-weight: 650; }
+  .interface-app h2 { font-size: 20px; }
+  .interface-app .page-heading { margin: 0 0 1.5rem; border: 0; padding: 0; }
+  .interface-app .toolbar { justify-content: flex-start; margin-block-end: 1.75rem; }
+  .interface-app .toolbar > .button { inline-size: 100%; }
+  .interface-app .referral-list { display: grid; gap: 1rem; }
+  .interface-app .referral-card { background: var(--surface); border: 1px solid var(--line); border-radius: 3px; }
+  .interface-app .referral-card > a { display: block; padding: 1.25rem; text-decoration: none; font-weight: 400; }
+  .interface-app .referral-card h2 { color: var(--ink); margin: 0 0 .55rem; }
+  .interface-app .referral-card p { margin: 0 0 1rem; color: var(--muted); }
+  .interface-app .referral-card-meta { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; font-size: .83rem; color: var(--muted); }
+  .interface-app .card-details { margin: 0; padding-inline: 1.25rem; border-block-start: 1px solid var(--line); }
+  .interface-app .card-details summary { display: list-item; min-block-size: 48px; padding-block: .75rem; font-size: .88rem; color: var(--teal); }
+  .interface-app .card-details dl { margin-block: 0 1rem; }
+  .interface-app .card-details dd { margin-block-end: .75rem; }
+  .interface-app .intake-nav { flex-wrap: nowrap; overflow-x: auto; gap: 1.25rem; margin-block: .5rem 1rem; }
+  .interface-app .intake-nav a { white-space: nowrap; min-block-size: 48px; font-size: .88rem; }
+  .interface-app .language-switch { margin-block: 1.25rem; gap: .75rem; }
+  .interface-app .language-switch label { flex: 1 0 100%; margin: 0; }
+  .interface-app .language-switch select { flex: 1; min-inline-size: 0; }
+  .interface-app .language-switch button { max-inline-size: 55%; }
+  .interface-app .field-grid { gap: 1.75rem; }
+  .interface-app .has-help { position: relative; }
+  .interface-app .has-help > label { min-height: 44px; padding-inline-end: 48px; padding-block-start: .4rem; }
+  .interface-app .field-help { margin: 0; }
+  .interface-app .field-help summary { position: absolute; top: 0; right: 0; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; font-size: 1rem; padding: 0; list-style: none; border: 1px solid var(--line); border-radius: 3px; }
+  [dir=rtl] .interface-app .field-help summary { right: auto; left: 0; }
+  .interface-app .field-help summary::-webkit-details-marker { display: none; }
+  .interface-app .field-hint { font-size: .85rem; line-height: 1.55; margin-block: .45rem .75rem; }
+
+  .interface-app .intake-section { padding-block: 1.75rem; }
+  .interface-app .intake-section fieldset { padding: 1.25rem 1rem; margin-block-start: 1.5rem; }
+  .interface-app .intake-section[data-repeat] { padding-block: .65rem; }
+  .interface-app .record-summary { padding: 1rem 0; min-block-size: 60px; }
+  .interface-app .record-summary h2 { font-size: 1.05rem; }
+  .interface-app .optional-tag { float: none; border: 0; padding: 0; color: var(--muted); font-family: inherit; }
+  .interface-app .form-actions { gap: 1rem; padding-block: 1.5rem; }
+  .interface-app .form-actions > button { flex: 1 0 100%; }
+  .interface-app .form-actions > a { display: flex; justify-content: center; align-items: center; min-block-size: 48px; inline-size: 100%; }
+  .interface-app .section { margin-block: 1.75rem; }
+  .interface-app .record-actions, .interface-app .add-records { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .75rem; padding-block: 1.25rem; }
+  .interface-app .record-actions a, .interface-app .record-actions button, .interface-app .add-records a { min-block-size: 52px; inline-size: 100%; justify-content: flex-start; padding: .7rem .8rem; border: 1px solid var(--line); background: var(--surface); text-decoration: none; font-size: .9rem; }
+  .interface-app .record-actions form { margin: 0; }
+  .interface-app .app-disclosure > summary { display: list-item; padding-block: .75rem; color: var(--ink); font-size: 20px; font-weight: 600; }
+  .interface-app .app-disclosure > summary h2, .interface-app .record-section > summary h3 { display: inline; }
+  .interface-app .help-disclosure { color: var(--muted); font-size: .9rem; margin-block: .5rem 1rem; }
+  .interface-app .help-disclosure summary { min-block-size: 44px; padding-block: .6rem; color: var(--teal); }
+  .interface-app .record-section > summary { min-block-size: 52px; padding-block: .75rem; }
+  .interface-app .bundle-heading .identifier { font-size: .85rem; color: var(--muted); font-weight: 400; }
+  .interface-app .bundle-heading { margin-block-end: 1rem; }
+  /* Policies remain in Menu; avoid a second navigation row below the content. */
+  .interface-app .site-footer { display: none; }
+  .interface-app .year-picker summary { min-block-size: 44px; }
+  @media (max-width: 420px) {
+    .interface-app .field-grid { grid-template-columns: 1fr; }
+    .interface-app .brand img { inline-size: 200px; }
+  }
+}
+
+/* Desktop uses the same components without the phone's fixed navigation. */
+@media screen and (min-width: 900px) {
+  .web-app, .web-app.keyboard-open { padding-block-end: 0; }
+  .web-app .masthead { min-block-size: 96px; padding: .75rem 2.5rem; flex-wrap: nowrap; gap: 2rem; }
+  .web-app .brand { flex: 1; }
+  .web-app .brand img { inline-size: 250px; }
+  .web-app .language-nav { order: 1; flex: 0 0 auto; inline-size: auto; }
+  .web-app .app-menu { order: 2; }
+  .web-app .workspace { display: grid; grid-template-columns: 190px minmax(0,1fr); min-block-size: calc(100vh - 96px); }
+  .web-app .sidebar, .web-app.keyboard-open .sidebar { display: block; position: static; padding: 2rem 1rem; border-block-start: 0; border-inline-end: 1px solid var(--line); background: var(--paper); }
+  .web-app .sidebar nav { display: grid; grid-template-columns: 1fr; gap: .75rem; }
+  .web-app .sidebar a { justify-content: flex-start; padding: .8rem 1rem; font-size: 1rem; text-align: start; }
+  .web-app main { max-inline-size: 1100px; padding: 2.25rem 3rem 4rem; }
+  .web-app h1 { font-size: 32px; }
+  .web-app .toolbar > .button { inline-size: auto; min-inline-size: 200px; }
+  .web-app .referral-card > a { padding: 1.5rem; }
+  .web-app .record-actions, .web-app .add-records { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 1rem; }
+  .web-app .form-actions > button { flex: 0 1 auto; min-inline-size: 220px; }
+  .web-app .form-actions > a { inline-size: auto; padding-inline: 1rem; }
+  .web-app .language-switch label { flex: 0 0 auto; }
+  .web-app .language-switch select { flex: 0 1 240px; }
+  .web-app .skip:focus { position: fixed; top: auto; bottom: 1rem; left: 1rem; right: 1rem; inset-block-start: auto; }
+}

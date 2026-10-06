@@ -1,0 +1,73 @@
+plugins {
+    id 'com.android.application'
+    id 'com.chaquo.python'
+}
+// Optional separate output folder avoids locked or cloud-synced build artifacts.
+if (System.getenv('SR_ANDROID_BUILD_DIR')) {
+    layout.buildDirectory = file(System.getenv('SR_ANDROID_BUILD_DIR'))
+}
+android {
+    namespace 'org.sehatraasta.app'
+    compileSdk 36
+    defaultConfig {
+        applicationId 'org.sehatraasta.app'
+        minSdk 24
+        targetSdk 36
+        versionCode 6
+        versionName '1.5'
+        ndk { abiFilters 'arm64-v8a', 'x86_64' }
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+    }
+    signingConfigs {
+        playUpload {
+            if (System.getenv('SR_UPLOAD_KEYSTORE')) {
+                storeFile file(System.getenv('SR_UPLOAD_KEYSTORE'))
+                storePassword System.getenv('SR_UPLOAD_STORE_PASSWORD')
+                keyAlias System.getenv('SR_UPLOAD_KEY_ALIAS')
+                keyPassword System.getenv('SR_UPLOAD_KEY_PASSWORD')
+            }
+        }
+    }
+    buildTypes {
+        debug { applicationIdSuffix '.test' }
+        release {
+            minifyEnabled false
+            // A local installable build; keep this key to install future updates.
+            signingConfig signingConfigs.debug
+        }
+        play {
+            initWith release
+            matchingFallbacks = ['release']
+            // Never use the local debug key for a Google Play upload.
+            signingConfig = System.getenv('SR_UPLOAD_KEYSTORE') ? signingConfigs.playUpload : null
+            debuggable false
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+dependencies {
+    implementation 'com.journeyapps:zxing-android-embedded:4.3.0'
+    // ZXing 4.3's published POM omits these runtime dependencies.
+    implementation 'androidx.core:core:1.6.0'
+    implementation 'androidx.fragment:fragment:1.3.6'
+    androidTestImplementation 'androidx.test:runner:1.6.2'
+    androidTestImplementation 'androidx.test:rules:1.6.1'
+    androidTestImplementation 'junit:junit:4.13.2'
+}
+chaquopy {
+    defaultConfig {
+        version '3.12'
+        if (System.getenv('SR_BUILD_PYTHON')) buildPython System.getenv('SR_BUILD_PYTHON')
+        pip {
+            install 'Flask==3.1.3'
+            install 'qrcode==8.2'
+            install 'Pillow==11.0.0'
+        }
+    }
+    sourceSets {
+        main { srcDir '../../src' }
+    }
+}

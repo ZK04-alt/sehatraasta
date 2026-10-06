@@ -1,0 +1,7 @@
+{% extends 'base.html' %}{% block content %}
+<dl class="facts"><dt>{{ t('field.name') }}</dt><dd><bdi dir="auto">{{ patient.name }}</bdi></dd><dt>{{ t('field.birth_year') }}</dt><dd>{{ patient.birth_year }}</dd><dt>{{ t('field.language') }}</dt><dd>{{ t('state.'+patient.language.name.lower()) }}</dd></dl>
+{% if patient.referrals %}<p><a class="button secondary" href="{{ url_for('pages.patient_print', patient_id=patient.ID, lang=lang) }}">{{ t('report.choose') }}</a></p>{% endif %}
+<div class="toolbar"><h2>{{ t('page.bundles') }}</h2><a class="button" href="{{ url_for('pages.bundle_new', patient_id=patient.ID, lang=lang) }}">{{ t('action.bundle_new') }}</a></div>
+{% for bundle in patient.referrals|sort(attribute='creation_time') %}<div class="list-row"><a href="{{ url_for('pages.bundle', bundle_id=bundle.ID, lang=lang) }}"><bdi dir="auto">{{ bundle.source_facility }}</bdi> · {{ bundle.creation_time.strftime('%Y-%m-%d %H:%M') }}</a>{% if bundle.destination %}<bdi dir="auto">{{ bundle.destination }}</bdi>{% endif %}<a href="{{ url_for('pages.visit_delete', bundle_id=bundle.ID, lang=lang) }}">{{ t('visit.remove') }}</a></div>{% else %}<p>{{ t('state.empty') }}</p>{% endfor %}
+<p><a href="{{ url_for('pages.patient_delete', patient_id=patient.ID, lang=lang) }}">{{ t('action.patient_delete') }}</a></p>
+{% endblock %}

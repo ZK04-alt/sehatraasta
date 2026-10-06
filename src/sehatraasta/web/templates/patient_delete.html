@@ -1,0 +1,13 @@
+{% extends 'base.html' %}{% block content %}
+<p><strong><bdi dir="auto">{{ patient.name }}</bdi></strong> · {{ patient.birth_year }}</p>
+<p>{{ t('patient.delete_help') }}</p>
+<p>{{ t('page.bundles') }}: {{ patient.referrals|length }}</p>
+{% if error %}<p role="alert" class="error-summary">{{ t(error) }}</p>{% endif %}
+<form method="post" class="entry-form">
+  <input type="hidden" name="csrf" value="{{ form_token() }}">
+  <input type="hidden" name="lang" value="{{ lang }}">
+  <input type="hidden" name="revision" value="{{ patient._storage_revision }}">
+  <label><input type="checkbox" name="confirm" value="yes" required> {{ t('patient.delete_confirm') }}</label>
+  <div class="form-actions"><button type="submit">{{ t('action.patient_delete') }}</button><a href="{{ url_for('pages.patient', patient_id=patient.ID, lang=lang) }}">{{ t('action.cancel') }}</a></div>
+</form>
+{% endblock %}

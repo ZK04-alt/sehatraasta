@@ -1,0 +1,18 @@
+{
+  "book": [
+    {
+      "ID": "bk-001",
+      "title": "the lightening thief",
+      "total_copies": 51,
+      "avail_copies": 50
+    }
+  ],
+
+  "loan": [
+    {
+      "ID": "ln-001",
+      "book_ID": "bk-001",
+      "active": true
+    }
+  ]
+}

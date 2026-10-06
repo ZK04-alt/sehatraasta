@@ -1,0 +1,49 @@
+{% macro render_fields(fields, values, errors, t) %}
+{% for field in fields %}
+{% set error = errors|selectattr('field', 'equalto', field.name)|first %}
+{% set control_id = field.control_id|default(field.name) %}
+{% set required = field.required and not field.conditional|default(false) %}
+<div class="field {{ 'wide' if field.kind in ['textarea','file','checkbox'] else '' }} {{ 'has-help' if field.hint else '' }}">
+<label for="{{ control_id }}">{{ t(field.label) }} <span class="requirement">{{ t('field.required' if field.required else 'field.optional') }}</span></label>
+{% if field.hint %}<details class="help-disclosure field-help"><summary><span aria-hidden="true">?</span><span class="sr-only">{{ t('app.help') }}: {{ t(field.label) }}</span></summary><p class="field-hint" id="{{ control_id }}-hint">{{ t(field.hint) }}</p></details>{% endif %}
+{% if field.kind == 'preset' %}
+{% set selected = values.get(field.name, '') %}
+{% set custom = selected == '__custom__' or (selected and selected not in field.choices|map(attribute=0)|list) %}
+<div data-preset>
+<select id="{{ control_id }}" name="{{ field.name }}" {{ 'required' if required else '' }} {% if error %}aria-invalid="true" aria-describedby="{{ control_id }}-error"{% elif field.hint %}aria-describedby="{{ control_id }}-hint"{% endif %}>
+<option value="">{{ t('field.choose') }}</option>
+{% for value, label in field.choices %}<option value="{{ value }}" {{ 'selected' if selected==value else '' }}>{{ label }}</option>{% endfor %}
+<option value="__custom__" {{ 'selected' if custom else '' }}>{{ t('field.custom') }}</option>
+</select>
+<div class="custom-value" data-custom>
+<label for="{{ control_id }}-custom">{{ t('field.custom_value') }}: {{ t(field.label) }}</label>
+<input id="{{ control_id }}-custom" name="{{ field.name }}__custom" type="text" dir="auto" value="{{ values.get(field.name+'__custom', '') if selected=='__custom__' or not custom else selected }}" {% if error and custom %}aria-invalid="true" aria-describedby="{{ control_id }}-error"{% endif %}>
+</div>
+</div>
+{% elif field.kind == 'year' %}
+<input id="{{ control_id }}" name="{{ field.name }}" type="{{ 'text' if error else field.input_kind|default('number') }}" inputmode="numeric" step="1" value="{{ values.get(field.name, '') }}" {{ 'required' if required else '' }} aria-describedby="{{ control_id }}-hint{% if error %} {{ control_id }}-error{% endif %}" {% if error %}aria-invalid="true"{% endif %}>
+<details class="year-picker" data-year-picker data-target="{{ control_id }}" hidden>
+<summary>{{ t('field.choose_year') }}</summary>
+<div class="year-navigation"><button type="button" class="secondary" data-years-back>{{ t('action.earlier_years') }}</button><span data-year-range aria-live="polite"></span><button type="button" class="secondary" data-years-next>{{ t('action.later_years') }}</button></div>
+<div class="year-grid" data-year-grid></div>
+</details>
+{% elif field.kind == 'select' %}
+<select id="{{ control_id }}" name="{{ field.name }}" {{ 'required' if required else '' }} {% if error %}aria-invalid="true" aria-describedby="{{ control_id }}-error"{% elif field.hint %}aria-describedby="{{ control_id }}-hint"{% endif %}>
+<option value="">{{ t('field.choose') }}</option>
+{% if values.get(field.name) and values.get(field.name) not in field.choices|map(attribute=0)|list %}<option value="{{ values.get(field.name) }}" selected>{{ values.get(field.name) }}</option>{% endif %}
+{% for value, label in field.choices %}{% set state_label=t('state.'+value.lower()) %}
+<option value="{{ value }}" {{ 'selected' if values.get(field.name)==value else '' }}>{{ label if state_label.startswith('[Missing') else state_label }}</option>{% endfor %}
+</select>
+{% elif field.kind == 'textarea' %}
+<textarea id="{{ control_id }}" name="{{ field.name }}" rows="3" dir="auto" {{ 'required' if required else '' }} {% if error %}aria-invalid="true" aria-describedby="{{ control_id }}-error"{% elif field.hint %}aria-describedby="{{ control_id }}-hint"{% endif %}>{{ values.get(field.name, '') }}</textarea>
+{% else %}
+<input id="{{ control_id }}" name="{{ field.name }}" type="{{ field.input_kind|default('text' if error and field.kind in ['date','datetime-local','number'] else field.kind) }}"
+{% if field.kind!='file' %}value="{{ 'yes' if field.kind=='checkbox' else values.get(field.name, '') }}"{% endif %}
+{{ 'required' if required else '' }} {{ 'checked' if field.kind=='checkbox' and values.get(field.name)=='yes' else '' }}
+{% if field.kind != 'checkbox' %}dir="{{ 'ltr' if field.kind in ['date','datetime-local','number'] or field.name in ['ID','patient_id','amount','payload'] else 'auto' }}"{% endif %}
+{% if error %}aria-invalid="true" aria-describedby="{{ control_id }}-error"{% elif field.hint %}aria-describedby="{{ control_id }}-hint"{% endif %}>
+{% endif %}
+{% if error %}<p class="field-error" id="{{ control_id }}-error">{{ t(error.code) }}</p>{% endif %}
+</div>
+{% endfor %}
+{% endmacro %}
