@@ -1,0 +1,113 @@
+name: Verify existing SehatRaasta
+
+on:
+  push:
+    branches: [main, 'development/**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    name: Python regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        python: ['3.12', '3.14']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+      - run: python -m pip install -r requirements.txt
+      - run: python -m pip check
+      - run: python -m pytest -q
+
+  browser:
+    name: Fictional report browser
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: python -m pip install -r requirements.txt
+      - name: Install verification-only browser tooling
+        run: |
+          npm install --prefix "$RUNNER_TEMP/browser-tools" --no-save playwright@1.62.1
+          "$RUNNER_TEMP/browser-tools/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Check authored browser scripts
+        run: |
+          for file in src/sehatraasta/web/static/*.js; do node --check "$file"; done
+      - name: Inspect isolated fictional journey
+        env:
+          PYTHONPATH: src
+          SR_BROWSER_CHANNEL: chromium
+        run: |
+          python tests/manual/report_demo.py > "$RUNNER_TEMP/fictional-server.log" 2>&1 &
+          server=$!
+          trap 'kill "$server"' EXIT
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:5091/ > /dev/null; then break; fi
+            sleep 1
+          done
+          NODE_PATH="$RUNNER_TEMP/browser-tools/node_modules" node tests/manual/report_browser.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fictional-browser-evidence
+          path: tmp/report-browser/
+          retention-days: 7
+
+  android:
+    name: Android compile and lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - run: sdkmanager 'platforms;android-36' 'build-tools;35.0.0' 'build-tools;36.0.0'
+      - name: Build existing Android source
+        run: SR_BUILD_PYTHON="$(command -v python)" bash android/gradlew -p android assembleRelease assembleDebugAndroidTest lintRelease --console=plain
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-lint
+          path: android/app/build/reports/lint-results-release.*
+          retention-days: 7
+
+  dependency-audit:
+    name: Dependency advisories (desktop and Android pins)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install pip-audit==2.10.1
+      - run: python -m pip_audit -r requirements.txt
+      - name: Audit actual Android Python pins
+        run: |
+          sed -n "s/^[[:space:]]*install '\([^']*\)'/\1/p" android/app/build.gradle > "$RUNNER_TEMP/android-requirements.txt"
+          test -s "$RUNNER_TEMP/android-requirements.txt"
+          python -m pip_audit -r "$RUNNER_TEMP/android-requirements.txt" --no-deps --disable-pip
