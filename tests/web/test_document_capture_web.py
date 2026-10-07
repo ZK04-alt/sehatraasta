@@ -33,6 +33,32 @@ def test_document_only_web_save_has_no_required_reconstruction(app):
     assert 'None' not in detail.text
 
 
+@pytest.mark.parametrize('intent', ['save', 'save_later'])
+def test_interrupted_stale_details_offer_explicit_reopen_without_mutation(app, intent):
+    from sehatraasta.services.unfinished_visit_service import UnfinishedVisitService
+    drafts = UnfinishedVisitService(app.config['DATABASE'])
+    BundleService(SQLiteRepository(app.config['DATABASE']))
+    fields = {'capture':['paper'], 'mode':['new'], 'name':['Fictional original'],
+              'medical_date_kind':['unknown'], 'source_facility':['Before interruption']}
+    old = drafts.save(fields)
+    client = app.test_client()
+    page = client.get('/documents/new?unfinished=' + old['draft_id'])
+    token = re.search(r'name="csrf" value="([^"]+)"', page.text)[1]
+    newer = drafts.save({**fields, 'source_facility':['Latest saved detail']}, old['draft_id'], old['revision'])
+    response = client.post('/documents/new', data={'csrf':token, 'capture':'paper', 'lang':'en',
+        'mode':'new', 'name':'Fictional attempted', 'medical_date_kind':'unknown',
+        'source_facility':'Attempted detail', 'intent':intent,
+        'unfinished_id':old['draft_id'], 'unfinished_revision':str(old['revision']),
+        'file':(BytesIO(b'%PDF-1.4\nFictional stale upload'), 'stale.pdf')})
+    assert response.status_code == 409
+    assert 'paper was not saved' in response.text
+    assert 'Reopen saved details' in response.text
+    assert 'Attempted detail' in response.text
+    assert drafts.get(old['draft_id'])['revision'] == newer['revision']
+    assert drafts.get(old['draft_id'])['fields']['source_facility'] == ['Latest saved detail']
+    assert BundleService(SQLiteRepository(app.config['DATABASE'])).list_patients() == []
+
+
 @pytest.mark.parametrize('content,name,message',[(b'x','bad.txt','PDF, PNG or JPEG'),
     (b'x'*(5242880+1),'large.pdf','5 MiB'),(b'not a PDF','mismatch.pdf','PDF, PNG or JPEG')],ids=['unsupported','oversize','mismatched'])
 def test_file_error_explains_specific_next_action_and_keeps_text(app,content,name,message):

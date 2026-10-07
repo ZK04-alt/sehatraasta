@@ -21,6 +21,7 @@ def capture_page(get_service, consume, location):
     patients = service.list_patients()
     draft_id = request.form.get('unfinished_id', '') if request.method == 'POST' else request.args.get('unfinished', '')
     revision, errors, status = 0, [], 200
+    reopen_details = False
     if request.method == 'POST':
         values = request.form.to_dict()
     elif draft_id:
@@ -83,13 +84,15 @@ def capture_page(get_service, consume, location):
             return redirect(location('bundle', bundle_id=identifier), code=303)
         except (ValueError, OverflowError) as error:
             problem=str(error)
-            code = ('capture.removed_duplicate' if 'duplicate' in problem and 'Removed items' in problem else
+            reopen_details = problem == 'unfinished visit changed; reopen before saving'
+            code = ('capture.details_changed' if reopen_details else
+                    'capture.removed_duplicate' if 'duplicate' in problem and 'Removed items' in problem else
                     'capture.duplicate' if 'duplicate' in problem else
                     'capture.file_large' if problem=='file too large' else
                     'capture.file_type' if error_field=='file' and ('extension' in problem or 'filename' in problem or 'file header' in problem) else
                     'error.date' if error_field == 'medical_date_value' else
                     'error.required' if str(error).startswith('required') else 'error.invalid')
-            errors, status = [{'field': error_field, 'code': code}], 409 if 'duplicate' in problem else 422
+            errors, status = [{'field': error_field, 'code': code}], 409 if reopen_details or 'duplicate' in problem else 422
         except (StorageError, OSError) as error:
             log_storage_error(current_app.config['DATABASE'], 'capture', error)
             errors, status = [{'field': 'capture-form', 'code': 'error.unavailable'}], 503
@@ -108,4 +111,5 @@ def capture_page(get_service, consume, location):
             revision = 0
     return render_template('document_capture.html', title='capture.title', fields=[],
         values=values, errors=errors, existing_fields=existing_fields, name_fields=name_fields,
-        optional_fields=optional_fields, unfinished_id=draft_id, unfinished_revision=revision), status
+        optional_fields=optional_fields, unfinished_id=draft_id, unfinished_revision=revision,
+        reopen_details=reopen_details), status

@@ -56,10 +56,19 @@ public class UpgradeProbeTest {
             +"from sehatraasta.services.file_service import FileService\nfrom sehatraasta.services.qr_service import QRService\n"
             +"import sehatraasta.android_runtime as runtime\napp=runtime._server.app.app\ndb=Path(app.config['DATABASE'])\ns=BundleService(SQLiteRepository(db))\n"
             +"assert s.get_patient('PK-901').name=='Fictional immutable APK upgrade'\n"
+            +"assert s.get_patient('PK-901').birth_year==1980\n"
             +"v=s.get_bundle('RB-901')\nassert v.creation_time.isoformat()=='2020-01-02T00:00:00'\n"
             +"assert v.medical_date_kind=='unknown' and v.medical_date_value is None\n"
             +"assert v.total_cost_pkr()==Decimal('25.10')\n"
             +"assert FileService(db).retrieve('AT-901')[0]==b'%PDF-1.4\\nFictional immutable APK original'\n"
-            +"assert QRService(db).for_bundle('RB-901')==(db.parent/'fictional-upgrade-token').read_text()\n");
+            +"assert QRService(db).for_bundle('RB-901')==(db.parent/'fictional-upgrade-token').read_text()\n"
+            +"from sehatraasta.services.web_transfer_service import WebTransferService\nfrom sehatraasta.services.dataset_backup import DatasetBackupService\n"
+            +"backup=WebTransferService(s).backup()\nassert backup[:2]==b'PK'\n"
+            +"archive=db.parent/'fictional-after-upgrade.zip'\narchive.write_bytes(backup)\n"
+            +"restored=db.parent/'fictional-after-upgrade-restored'\nDatasetBackupService(db).restore(archive,restored,confirmed=True)\n"
+            +"assert FileService(restored/'sehatraasta.sqlite').retrieve('AT-901')[0]==FileService(db).retrieve('AT-901')[0]\n"
+            +"response=app.test_client().get('/patients/PK-901/print?preview=yes&selection=individual&visit=RB-901&lang=en')\n"
+            +"assert response.status_code==200 and b'Fictional immutable APK upgrade' in response.data\n"
+            +"assert b'Find this saved visit' in response.data\n");
     }
 }

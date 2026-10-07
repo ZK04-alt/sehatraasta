@@ -23,8 +23,10 @@ class IDAllocator:
                 for records in (bundle.medication_item, bundle.diagnostic_results,
                                 bundle.imaging_items, bundle.cost_entries, bundle.attachments):
                     self.used.update(item.ID for item in records)
-        # Non-persistent repositories have no retained SQLite snapshots.
-        if getattr(repository, 'path', None) is None:
+        # JSON and in-memory repositories also allocate IDs, but do not have
+        # SQLite's retained-row store. A path alone is not that capability.
+        from sehatraasta.storage.sqlite_repository import SQLiteRepository
+        if not isinstance(repository, SQLiteRepository):
             return
         from sehatraasta.storage.db import connect_database
         connection = connect_database(repository.path, read_only=True)

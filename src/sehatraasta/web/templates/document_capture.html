@@ -2,6 +2,7 @@
 {% block content %}
 <p class="form-intro">{{ t('capture.help') }}</p>
 {% if errors %}<section class="error-summary" role="alert" tabindex="-1" id="errors" aria-labelledby="error-title"><h2 id="error-title">{{ t('error.summary') }}</h2><ul>{% for error in errors %}<li><a href="#{{ error.field }}">{{ t(error.code) }}</a></li>{% endfor %}</ul></section>{% endif %}
+{% if reopen_details %}<p><a class="button" href="{{ url_for('pages.document_new', unfinished=unfinished_id, lang=lang) }}">{{ t('capture.reopen_details') }}</a></p>{% endif %}
 <form id="capture-form" method="post" enctype="multipart/form-data" class="entry-form intake-form" novalidate tabindex="-1" data-intake data-autosave-url="{{ url_for('pages.save_unfinished_visit') }}" data-autosave-token="{{ form_token(url_for('pages.save_unfinished_visit')) }}" data-saving="{{ t('visit.saving') }}" data-saved="{{ t('capture.saved_details') }}" data-failed="{{ t('visit.save_failed') }}">
 <input type="hidden" name="capture" value="paper"><input type="hidden" name="unfinished_id" value="{{ unfinished_id }}"><input type="hidden" name="unfinished_revision" value="{{ unfinished_revision }}">
 <input type="hidden" name="csrf" value="{{ form_token(errors=errors) }}"><input type="hidden" name="had_errors" value="{{ 1 if errors else 0 }}">
@@ -21,7 +22,7 @@
 <p class="field-hint" id="medical-date-help">{{ t('date.help') }}</p>{% for error in errors if error.field=='medical_date_value' %}<p class="field-error" id="medical_date_value-error">{{ t(error.code) }}</p>{% endfor %}
 </details>
 <p class="autosave-status" data-autosave-status role="status">{{ t('capture.saved_details') if unfinished_id else t('visit.autosave_help') }}</p>
-<div class="form-actions"><button name="intent" value="save">{{ t('action.save') }}</button><button class="secondary" name="intent" value="save_later" formnovalidate>{{ t('visit.save_later') }}</button></div>
+<div class="form-actions"><button name="intent" value="save">{{ t('action.save') }}</button><button class="secondary" name="intent" value="save_later" formnovalidate>{{ t('capture.keep_details') }}</button></div>
 <div class="submission" hidden role="status"><p>{{ t('status.working') }}</p></div>
 </form>
 <p><a href="{{ url_for('pages.bundle_new', patient_id=values.get('patient_id',''), lang=lang) }}">{{ t('capture.detailed') }}</a></p>

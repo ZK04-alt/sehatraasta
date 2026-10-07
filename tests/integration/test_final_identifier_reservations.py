@@ -6,6 +6,19 @@ from sehatraasta.services.recovery_service import RecoveryService
 from sehatraasta.services.correction_service import CorrectionService
 
 
+def test_generated_identifiers_preserve_json_repository_compatibility(tmp_path):
+    from datetime import datetime
+    from sehatraasta.storage.repositories import JsonRepository
+    from sehatraasta.domain import Language, ReferralStatus
+    from sehatraasta.services.bundle_service import BundleService
+    repository = JsonRepository(tmp_path / 'fictional.json')
+    assert IDAllocator(repository).allocate('patient').startswith('PT-')
+    service = BundleService(repository)
+    service.create_patient('PK-001', 'Fictional JSON patient', None, Language.ENGLISH)
+    service.create_bundle('PK-001', None, datetime(2026, 10, 7), '', '', ReferralStatus.DRAFT)
+    assert service.get_patient('PK-001').referrals[0].ID.startswith('SR-')
+
+
 @pytest.mark.parametrize('nested', [False, True])
 def test_generated_text_id_skips_removed_records(case, monkeypatch, nested):
     service, _ = case
