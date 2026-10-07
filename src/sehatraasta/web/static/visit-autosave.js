@@ -9,6 +9,8 @@ if (visitForm) {
     dirty = false;
     note.textContent = visitForm.dataset.saving;
     const values = new FormData(visitForm);
+    // Unfinished work stores text only. Never pretend the browser's File is saved.
+    for (const [name, value] of values) if (value instanceof File) values.delete(name);
     values.set('csrf', visitForm.dataset.autosaveToken);
     values.delete('intent');
     pending = fetch(visitForm.dataset.autosaveUrl, {

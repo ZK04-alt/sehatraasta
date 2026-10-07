@@ -10,6 +10,7 @@ MIGRATION_PATH = Path(__file__).parent / "migrations" / "001_initial.sql"
 ATTACHMENT_MIGRATION = MIGRATION_PATH.with_name("002_attachments.sql")
 PASSPORT_MIGRATION = MIGRATION_PATH.with_name("003_passport.sql")
 UNFINISHED_MIGRATION = MIGRATION_PATH.with_name("004_unfinished_visits.sql")
+DOCUMENT_DATES_MIGRATION = MIGRATION_PATH.with_name("005_document_dates.sql")
 TABLE_NAMES = frozenset({
     "schema_version", "patients", "referral_bundles", "audit_events",
     "instructions", "cost_entries", "attachments", "imaging_items",
@@ -41,7 +42,7 @@ def check_database(connection):
         "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"
     )}
     versions = [row[0] for row in connection.execute("SELECT version FROM schema_version")]
-    if versions not in ([1], [1, 2], [1, 2, 3], [1, 2, 3, 4]):
+    if versions not in ([1], [1, 2], [1, 2, 3], [1, 2, 3, 4], [1, 2, 3, 4, 5]):
         raise StorageError("unsupported database version")
     expected_tables = TABLE_NAMES
     if 2 in versions:
@@ -62,6 +63,8 @@ def check_database(connection):
             template.executescript(PASSPORT_MIGRATION.read_text(encoding="utf-8"))
         if 4 in versions:
             template.executescript(UNFINISHED_MIGRATION.read_text(encoding="utf-8"))
+        if 5 in versions:
+            template.executescript(DOCUMENT_DATES_MIGRATION.read_text(encoding="utf-8"))
         expected = template.execute(
             "SELECT name, sql FROM sqlite_master WHERE sql IS NOT NULL ORDER BY name"
         ).fetchall()
@@ -83,6 +86,10 @@ def initialize_database(path):
     try:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         connection = connect_database(path)
+        # SQLite table-rebuild migrations must not cascade-delete preserved
+        # children. FK validation still runs before commit; all other database
+        # connections continue enforcing foreign keys normally.
+        connection.execute('PRAGMA foreign_keys = OFF')
         with connection:
             connection.execute("BEGIN IMMEDIATE")
             exists = connection.execute(
@@ -134,6 +141,19 @@ def initialize_database(path):
                         if sql not in ("BEGIN TRANSACTION;", "COMMIT;"):
                             connection.execute(sql)
                         statement = ""
+                check_database(connection)
+            versions = [row[0] for row in connection.execute("SELECT version FROM schema_version")]
+            if versions == [1, 2, 3, 4]:
+                statement = ""
+                for line in DOCUMENT_DATES_MIGRATION.read_text(encoding="utf-8").splitlines():
+                    statement += line + "\n"
+                    if sqlite3.complete_statement(statement):
+                        sql = statement.strip()
+                        if sql not in ("BEGIN TRANSACTION;", "COMMIT;"):
+                            connection.execute(sql)
+                        statement = ""
+                if statement.strip():
+                    raise StorageError('incomplete database migration')
                 check_database(connection)
     except (OSError, sqlite3.Error, StorageError) as error:
         log_storage_error(path, "initialize", error)

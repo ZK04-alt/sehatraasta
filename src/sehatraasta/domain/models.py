@@ -274,7 +274,7 @@ class Attachment:
     name: str
     MIME_type: str
     sha: str
-    date: date
+    date: date | None
     source: str
     size: float
     generated_stored_name: str = ""
@@ -303,7 +303,7 @@ class Attachment:
             raise ValueError("invalid sha")
         if isinstance(self.date, datetime):
             raise ValueError("invalid date")
-        if not isinstance(self.date, date):
+        if self.date is not None and not isinstance(self.date, date):
             raise ValueError("invalid date")
         if not isinstance(self.source, str):
             raise ValueError("invalid source")
@@ -423,6 +423,8 @@ class ReferralBundle:
     audit_events: list[AuditEvent] = field(default_factory=list)
     investigation_orders: list[InvestigationOrder] = field(default_factory=list)
     diagnostic_results: list[DiagnosticResult] = field(default_factory=list)
+    medical_date_kind: str = 'unknown'
+    medical_date_value: str | None = None
 
     @staticmethod
     def _has_duplicate_ids(items):
@@ -431,13 +433,13 @@ class ReferralBundle:
 
     def checks(self):
         validate_id(self.ID)
+        from .medical_dates import validate_medical_date
+        validate_medical_date(self.medical_date_kind, self.medical_date_value)
 
         if not isinstance(self.creation_time, datetime):
             raise ValueError("invalid creation time")
         if not isinstance(self.source_facility, str):
             raise ValueError("invalid source facility")
-        if not self.source_facility.strip():
-            raise ValueError("missing source facility")
         if not isinstance(self.destination, str):
             raise ValueError("invalid destination")
         if not isinstance(self.status, ReferralStatus):
@@ -592,7 +594,7 @@ class ReferralBundle:
 class Patient:
     ID: str
     name: str
-    birth_year: int
+    birth_year: int | None
     language: Language
     referrals: list[ReferralBundle] = field(default_factory=list)
 
@@ -609,9 +611,9 @@ class Patient:
         validate_record_id(self.ID, 'PT', extended=True)
         if not self.name.strip():
             raise ValueError("missing name")
-        if not isinstance(self.birth_year, int) or isinstance(self.birth_year, bool):
+        if self.birth_year is not None and (not isinstance(self.birth_year, int) or isinstance(self.birth_year, bool)):
             raise ValueError("birth year must be a number")
-        if self.birth_year <= 0:
+        if self.birth_year is not None and self.birth_year <= 0:
             raise ValueError("invalid birth year")
         if not isinstance(self.language, Language) or self.language not in [
             Language.ENGLISH,

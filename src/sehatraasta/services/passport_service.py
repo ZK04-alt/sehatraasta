@@ -12,7 +12,7 @@ from zipfile import ZipFile, ZIP_DEFLATED, BadZipFile
 
 from sehatraasta.storage import SQLiteRepository, StorageError
 from sehatraasta.storage.db import connect_database, check_database
-from .dataset_backup import DatasetBackupService, TABLES, encoded, read_tables
+from .dataset_backup import DatasetBackupService, TABLES, encoded, read_tables, migrate_legacy_tables
 from .file_service import FileService
 from .identifiers import IDAllocator
 from .qr_service import QRService
@@ -52,7 +52,7 @@ class PassportService:
                     [row for row in rows if row['patient_id'] == owner[0]] if name == 'patients' else
                     [row for row in rows if row['bundle_id'] == bundle_id]
                     for name, rows in all_tables.items()}
-                members = {'passport.json': encoded({'format': 'sehatraasta-passport', 'version': 1, 'tables': tables})}
+                members = {'passport.json': encoded({'format': 'sehatraasta-passport', 'version': 2, 'tables': tables})}
                 files = FileService(self.database)
                 for row in tables['managed_attachments']:
                     with files._path(row['stored_name']).open('rb') as stream:
@@ -101,7 +101,7 @@ class PassportService:
             if any(hashlib.sha256(data).hexdigest() != manifest[name] for name, data in members.items()):
                 raise ValueError()
             document = json.loads(members.pop('passport.json'))
-            if document['format'] != 'sehatraasta-passport' or type(document['version']) is not int or document['version'] != 1:
+            if document['format'] != 'sehatraasta-passport' or type(document['version']) is not int or document['version'] not in (1, 2):
                 raise ValueError()
             tables = document['tables']
             # Earlier passports predate unfinished visit storage. They contain only completed records.
@@ -113,6 +113,7 @@ class PassportService:
                 raise ValueError()
             if tables['visit_drafts'] or tables['visit_draft_fields']:
                 raise ValueError()  # Unfinished entries are never shared in a single-visit passport.
+            tables = migrate_legacy_tables(tables)
             with TemporaryDirectory(prefix='sr-passport-check-') as name:
                 DatasetBackupService(self.database)._restore_staged(Path(name), tables, members)
                 patient = SQLiteRepository(Path(name) / 'sehatraasta.sqlite').list_patients()[0]

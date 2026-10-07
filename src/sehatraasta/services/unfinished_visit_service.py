@@ -8,7 +8,8 @@ from sehatraasta.storage.db import connect_database
 from sehatraasta.storage.errors import StorageError, log_storage_error
 
 META = {'csrf', 'had_errors', 'intent', 'lang', 'unfinished_id', 'unfinished_revision'}
-BASE = {'mode', 'patient_id', 'name', 'birth_year', 'language', 'creation_time', 'source_facility', 'destination', 'status'}
+BASE = {'mode', 'patient_id', 'name', 'birth_year', 'language', 'creation_time', 'source_facility', 'destination', 'status',
+        'capture', 'medical_date_kind', 'medical_date_value'}
 ROW = re.compile(r'(medications|orders|results|imaging|instructions|costs)\.(rows|[0-9]{1,7}\.[a-z_]+(?:__custom)?)')
 
 
@@ -100,10 +101,11 @@ class UnfinishedVisitService:
         connection = connect_database(self.database, read_only=True)
         try:
             rows = connection.execute('''SELECT d.*, COALESCE(p.display_name, n.value, '') AS display_name,
-                COALESCE(f.value, '') AS facility FROM visit_drafts d
+                COALESCE(f.value, '') AS facility, COALESCE(c.value, '') AS capture FROM visit_drafts d
                 LEFT JOIN patients p ON p.patient_id = d.patient_id
                 LEFT JOIN visit_draft_fields n ON n.draft_id = d.draft_id AND n.field_name = 'name' AND n.position = 0
                 LEFT JOIN visit_draft_fields f ON f.draft_id = d.draft_id AND f.field_name = 'source_facility' AND f.position = 0
+                LEFT JOIN visit_draft_fields c ON c.draft_id = d.draft_id AND c.field_name = 'capture' AND c.position = 0
                 ORDER BY d.updated_at DESC''').fetchall()
             return [dict(row) for row in rows]
         except sqlite3.Error as error:

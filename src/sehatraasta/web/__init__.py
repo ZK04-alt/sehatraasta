@@ -29,9 +29,13 @@ def create_app(config=None):
     app.register_blueprint(pages)
     from .passport_messages import MESSAGES as passport_messages
     from .report_messages import MESSAGES as report_messages
+    from .remediation_messages import MESSAGES as remediation_messages
     from sehatraasta.presentation.catalogs import MESSAGES
     MESSAGES.update(passport_messages)
     MESSAGES.update(report_messages)
+    MESSAGES.update(remediation_messages)
+    from sehatraasta.domain.medical_dates import visit_sort_key
+    app.jinja_env.filters['sort_visits'] = lambda visits: sorted(visits, key=visit_sort_key)
 
     def signer():
         return URLSafeTimedSerializer(app.secret_key, salt='sr-form')
@@ -80,7 +84,15 @@ def create_app(config=None):
             parameters = request.args.to_dict(flat=False)
             parameters['lang'] = [code]
             language_urls[code] = request.path + '?' + urlencode(parameters, doseq=True)
+        def medical_date_label(visit):
+            if visit.medical_date_kind == 'unknown':
+                return translate('date.unknown', language)
+            label = translate('date.' + visit.medical_date_kind, language)
+            return label + ': ' + visit.medical_date_value
+        def document_date_label(document):
+            return document.date.isoformat() if document.date else translate('date.unknown', language)
         return dict(t=lambda key: translate(key, language), lang=language,
+                    medical_date_label=medical_date_label, document_date_label=document_date_label,
                     direction=LANGUAGES[language][1], languages=LANGUAGES,
                     language_urls=language_urls, form_token=form_token)
 

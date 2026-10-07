@@ -2,15 +2,13 @@
 import base64
 from datetime import datetime, timezone
 from html import escape
-from io import BytesIO
 from pathlib import Path
 import textwrap
-
-import qrcode
 
 from sehatraasta.storage.db import connect_database
 from sehatraasta.storage.errors import StorageError
 from .qr_service import QRService, verify_payload
+from .qr_image import render_qr_png
 
 
 WARNING = "Verify source documents and review status"
@@ -32,12 +30,7 @@ class PrintService:
         patient, bundle = self.bundles.get_bundle_owner(bundle_id)
         payload = QRService(self.database).for_bundle(bundle_id)
         token = verify_payload(payload)
-        qr = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_M, border=4, box_size=8)
-        qr.add_data(payload)
-        qr.make(fit=True)
-        buffer = BytesIO()
-        qr.make_image(fill_color="black", back_color="white").save(buffer, format="PNG")
-        image = base64.b64encode(buffer.getvalue()).decode("ascii")
+        image = base64.b64encode(render_qr_png(payload, box_size=8)).decode("ascii")
         connection = connect_database(self.database, read_only=True)
         try:
             links = [dict(row) for row in connection.execute("SELECT * FROM managed_attachments WHERE bundle_id = ?", (bundle_id,))]
@@ -45,7 +38,12 @@ class PrintService:
             connection.close()
 
         overview = []
-        for line in ("SehatRaasta - Referral summary", f"Patient: {patient.name} | Born: {patient.birth_year}",
+        medical_date = ('Date not known' if bundle.medical_date_kind == 'unknown' else
+                        bundle.medical_date_kind.title() + ' date: ' + bundle.medical_date_value)
+        identity = f"Patient: {patient.name}" + (f" | Born: {patient.birth_year}" if patient.birth_year else '')
+        for line in ("SehatRaasta - Referral summary", identity, medical_date,
+                     "Saved on this device: " + bundle.creation_time.isoformat(timespec='minutes'),
+                     "Saved time is not a medical date.",
                      f"Source: {bundle.source_facility}", f"Destination: {bundle.destination}",
                      f"Referral status: {bundle.status.value}", "", "CATEGORY / STATE / REVIEWED TIME"):
             overview.extend(wrapped(line))
@@ -102,7 +100,8 @@ class PrintService:
             detail.extend(wrapped(f"Source: {item.source} | Document: {sources('instruction_id', item._storage_id)}"))
         detail.extend(["", "ATTACHMENT SOURCES (no document previews)"])
         for item in bundle.attachments:
-            detail.extend(wrapped(f"{item.ID} | {item.category} | {item.date} | Source: {item.source}"))
+            day = item.date.isoformat() if item.date else 'Date not known'
+            detail.extend(wrapped(f"{item.ID} | {item.category} | {day} | Source: {item.source}"))
             for link in links:
                 if link["attachment_id"] == item.ID:
                     detail.extend(wrapped(f"Provenance: {link['source_type']} | Reference: {link['source_identifier'] or 'source not supplied'}"))

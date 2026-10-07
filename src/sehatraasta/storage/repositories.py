@@ -78,6 +78,8 @@ def bundle_to_dict(bundle):
     return {
         "ID": bundle.ID,
         "creation_time": bundle.creation_time.isoformat(),
+        "medical_date_kind": bundle.medical_date_kind,
+        "medical_date_value": bundle.medical_date_value,
         "source_facility": bundle.source_facility,
         "destination": bundle.destination,
         "status": bundle.status.name,
@@ -110,7 +112,7 @@ def bundle_to_dict(bundle):
                 "name": item.name,
                 "MIME_type": item.MIME_type,
                 "sha": item.sha,
-                "date": item.date.isoformat(),
+                "date": item.date.isoformat() if item.date is not None else None,
                 "source": item.source,
                 "size": item.size,
                 "generated_stored_name": item.generated_stored_name,
@@ -198,7 +200,7 @@ def _bundle_from_dict(data):
             item["name"],
             item["MIME_type"],
             item["sha"],
-            date.fromisoformat(item["date"]),
+            date.fromisoformat(item["date"]) if item["date"] is not None else None,
             item["source"],
             item["size"],
             item.get("generated_stored_name", ""),
@@ -232,6 +234,8 @@ def _bundle_from_dict(data):
         source_facility=data["source_facility"],
         destination=data["destination"],
         status=ReferralStatus[data["status"]],
+        medical_date_kind=data.get('medical_date_kind', 'unknown'),
+        medical_date_value=data.get('medical_date_value'),
         encounters=[
             Encounter(
                 date.fromisoformat(item["date"]),

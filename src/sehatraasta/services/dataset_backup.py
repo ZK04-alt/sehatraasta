@@ -39,6 +39,21 @@ def read_tables(connection):
     return {table: [dict(row) for row in connection.execute('SELECT * FROM "' + table + '" ORDER BY rowid')] for table in TABLES}
 
 
+def migrate_legacy_tables(tables):
+    """Extend genuine old row shapes in memory before staging a separate copy."""
+    versions = [row['version'] for row in tables['schema_version']]
+    if versions == [1, 2, 3, 4]:
+        for row in tables['referral_bundles']:
+            if 'medical_date_kind' in row or 'medical_date_value' in row:
+                raise ValueError('legacy archive has inconsistent date columns')
+            row['medical_date_kind'] = 'unknown'
+            row['medical_date_value'] = None
+        tables['schema_version'].append({'version': 5, 'applied_at': 'legacy archive migration'})
+    elif versions != [1, 2, 3, 4, 5]:
+        raise ValueError('unsupported archive schema version')
+    return tables
+
+
 def check_files(database, members):
     service = FileService(database)
     connection = connect_database(database, read_only=True)
@@ -86,7 +101,7 @@ class DatasetBackupService:
                 connection.execute("BEGIN IMMEDIATE")
                 check_database(connection)
                 tables = read_tables(connection)
-                members = {"dataset.json": encoded({"version": 2, "synthetic_only": True, "tables": tables})}
+                members = {"dataset.json": encoded({"format": "sehatraasta-backup", "version": 3, "synthetic_only": True, "tables": tables})}
                 service = FileService(self.database)
                 for row in tables["managed_attachments"]:
                     with service._path(row["stored_name"]).open("rb") as stream:
@@ -137,7 +152,9 @@ class DatasetBackupService:
             document = json.loads(members.pop("dataset.json"))
             old_tables = set(TABLES) - {'referral_context', 'visit_drafts', 'visit_draft_fields'}
             previous_tables = set(TABLES) - {'visit_drafts', 'visit_draft_fields'}
-            if type(document["version"]) is not int or document["version"] != 2 or document["synthetic_only"] is not True or set(document["tables"]) not in (old_tables, previous_tables, set(TABLES)):
+            if type(document["version"]) is not int or document["version"] not in (2, 3) or document["synthetic_only"] is not True or set(document["tables"]) not in (old_tables, previous_tables, set(TABLES)):
+                raise ValueError()
+            if document['version'] == 3 and document.get('format') != 'sehatraasta-backup':
                 raise ValueError()
             if 'referral_context' not in document['tables']:
                 document['tables']['referral_context'] = []
@@ -146,11 +163,12 @@ class DatasetBackupService:
                 document['tables']['visit_drafts'] = []
                 document['tables']['visit_draft_fields'] = []
                 document['tables']['schema_version'].append({'version': 4, 'applied_at': 'legacy backup migration'})
-            return document["tables"], members
+            return migrate_legacy_tables(document["tables"]), members
         except (OSError, BadZipFile, RuntimeError, KeyError, TypeError, ValueError, StorageError, UnicodeError):
             raise ValueError("invalid or corrupt backup") from None
 
     def _restore_staged(self, folder, tables, members):
+        tables = migrate_legacy_tables(tables)
         database = folder / "sehatraasta.sqlite"
         initialize_database(database)
         connection = connect_database(database)

@@ -1,0 +1,27 @@
+{% extends 'base.html' %}{% from '_fields.html' import render_fields %}
+{% block content %}
+<p class="form-intro">{{ t('capture.help') }}</p>
+{% if errors %}<section class="error-summary" role="alert" tabindex="-1" id="errors" aria-labelledby="error-title"><h2 id="error-title">{{ t('error.summary') }}</h2><ul>{% for error in errors %}<li><a href="#{{ error.field }}">{{ t(error.code) }}</a></li>{% endfor %}</ul></section>{% endif %}
+<form id="capture-form" method="post" enctype="multipart/form-data" class="entry-form intake-form" novalidate tabindex="-1" data-intake data-autosave-url="{{ url_for('pages.save_unfinished_visit') }}" data-autosave-token="{{ form_token(url_for('pages.save_unfinished_visit')) }}" data-saving="{{ t('visit.saving') }}" data-saved="{{ t('capture.saved_details') }}" data-failed="{{ t('visit.save_failed') }}">
+<input type="hidden" name="capture" value="paper"><input type="hidden" name="unfinished_id" value="{{ unfinished_id }}"><input type="hidden" name="unfinished_revision" value="{{ unfinished_revision }}">
+<input type="hidden" name="csrf" value="{{ form_token(errors=errors) }}"><input type="hidden" name="had_errors" value="{{ 1 if errors else 0 }}">
+<div class="language-switch"><label for="lang">{{ t('nav.language') }}</label><select id="lang" name="lang">{% for code, info in languages.items() %}<option value="{{ code }}" {{ 'selected' if code==lang else '' }}>{{ info[0] }}</option>{% endfor %}</select><button class="secondary" name="intent" value="language" formnovalidate>{{ t('action.language') }}</button></div>
+<fieldset><legend>{{ t('capture.patient') }}</legend>
+<label for="mode">{{ t('intake.patient_mode') }}</label><select id="mode" name="mode"><option value="existing" {{ 'selected' if values.get('mode')=='existing' else '' }}>{{ t('intake.existing_patient') }}</option><option value="new" {{ 'selected' if values.get('mode')=='new' else '' }}>{{ t('intake.new_patient') }}</option></select>
+<div data-patient-mode="existing">{{ render_fields(existing_fields, values, errors, t) }}</div>
+<div data-patient-mode="new">{{ render_fields(name_fields, values, errors, t) }}</div>
+</fieldset>
+{{ render_fields([{'name':'file','label':'field.file','kind':'file','required':true}], values, errors, t) }}
+<p class="muted">{{ t('capture.unsaved_file') }}</p>
+<details class="intake-section" {{ 'open' if values.get('source_facility') or values.get('birth_year') or values.get('medical_date_kind','unknown')!='unknown' or errors else '' }}><summary>{{ t('capture.details') }}</summary>
+{{ render_fields(optional_fields, values, errors, t) }}
+<label for="medical_date_kind">{{ t('date.kind') }}</label><select id="medical_date_kind" name="medical_date_kind">{% for kind in ['unknown','exact','approximate'] %}<option value="{{ kind }}" {{ 'selected' if values.get('medical_date_kind','unknown')==kind else '' }}>{{ t('date.'+kind) }}</option>{% endfor %}</select>
+<label for="medical_date_value">{{ t('date.medical') }} <span class="requirement">{{ t('field.optional') }}</span></label><input id="medical_date_value" name="medical_date_value" type="text" dir="ltr" value="{{ values.get('medical_date_value','') }}" aria-describedby="medical-date-help{% if errors|selectattr('field','equalto','medical_date_value')|list %} medical_date_value-error{% endif %}" {% if errors|selectattr('field','equalto','medical_date_value')|list %}aria-invalid="true"{% endif %}>
+<p class="field-hint" id="medical-date-help">{{ t('date.help') }}</p>{% for error in errors if error.field=='medical_date_value' %}<p class="field-error" id="medical_date_value-error">{{ t(error.code) }}</p>{% endfor %}
+</details>
+<p class="autosave-status" data-autosave-status role="status">{{ t('capture.saved_details') if unfinished_id else t('visit.autosave_help') }}</p>
+<div class="form-actions"><button name="intent" value="save">{{ t('action.save') }}</button><button class="secondary" name="intent" value="save_later" formnovalidate>{{ t('visit.save_later') }}</button></div>
+<div class="submission" hidden role="status"><p>{{ t('status.working') }}</p></div>
+</form>
+<p><a href="{{ url_for('pages.bundle_new', patient_id=values.get('patient_id',''), lang=lang) }}">{{ t('capture.detailed') }}</a></p>
+{% endblock %}

@@ -43,7 +43,7 @@ class SQLiteRepository(PatientRepository):
 
     def _save(self, patient, adding, unfinished=None):
         patient.checks()
-        if patient.birth_year > 9223372036854775807:
+        if patient.birth_year is not None and patient.birth_year > 9223372036854775807:
             raise ValueError("birth year is too large")
         for bundle in patient.referrals:
             bundle.checks()
@@ -64,7 +64,7 @@ class SQLiteRepository(PatientRepository):
                     for item in bundle.attachments:
                         saved = connection.execute("SELECT a.* FROM attachments a JOIN managed_attachments m USING(attachment_id) WHERE a.attachment_id = ?", (item.ID,)).fetchone()
                         if saved is not None:
-                            supplied = (item.ID, bundle.ID, item.category, item.name, item.generated_stored_name, item.MIME_type, item.size, item.sha, item.date.isoformat(), item.source)
+                            supplied = (item.ID, bundle.ID, item.category, item.name, item.generated_stored_name, item.MIME_type, item.size, item.sha, item.date.isoformat() if item.date is not None else None, item.source)
                             if tuple(saved) != supplied:
                                 raise ValueError("stored attachment metadata cannot be edited directly")
                 next_order = connection.execute("SELECT COALESCE(MAX(order_id), 0) FROM investigation_orders").fetchone()[0]
@@ -119,8 +119,8 @@ class SQLiteRepository(PatientRepository):
 
     def _write_bundle(self, connection, patient_id, bundle):
         connection.execute(
-            "INSERT INTO referral_bundles VALUES (?, ?, ?, ?, ?, ?)",
-            (bundle.ID, patient_id, bundle.creation_time.isoformat(), bundle.source_facility, bundle.destination, bundle.status.name),
+            "INSERT INTO referral_bundles VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (bundle.ID, patient_id, bundle.creation_time.isoformat(), bundle.source_facility, bundle.destination, bundle.status.name, bundle.medical_date_kind, bundle.medical_date_value),
         )
         for item in bundle.encounters:
             item.checks()
@@ -149,7 +149,7 @@ class SQLiteRepository(PatientRepository):
                 raise ValueError("attachment size must be whole bytes within the storage limit")
             connection.execute(
                 "INSERT INTO attachments VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (item.ID, bundle.ID, item.category, item.name, item.generated_stored_name, item.MIME_type, int(item.size), item.sha, item.date.isoformat(), item.source),
+                (item.ID, bundle.ID, item.category, item.name, item.generated_stored_name, item.MIME_type, int(item.size), item.sha, item.date.isoformat() if item.date is not None else None, item.source),
             )
         for item in bundle.imaging_items:
             item.checks()
@@ -242,6 +242,8 @@ class SQLiteRepository(PatientRepository):
             "ID": bundle_id, "creation_time": row["creation_time"],
             "source_facility": row["source_facility"], "destination": row["destination"],
             "status": row["referral_status"],
+            "medical_date_kind": row["medical_date_kind"],
+            "medical_date_value": row["medical_date_value"],
         }
         data["encounters"] = [dict(item) for item in connection.execute(
             "SELECT date, facility, clinician_display_text, source_note FROM encounters WHERE bundle_id = ? ORDER BY encounter_id", (bundle_id,))]

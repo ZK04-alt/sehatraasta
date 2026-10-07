@@ -2,6 +2,7 @@
 from .referral_context import ReferralContextService
 from .file_service import FileService
 from sehatraasta.storage.errors import StorageError
+from sehatraasta.domain.medical_dates import visit_sort_key
 
 
 class ReportDocumentError(ValueError):
@@ -40,7 +41,7 @@ class DoctorReportService:
         owned = {visit.ID: visit for visit in patient.referrals}
         if any(identifier not in owned for identifier in visit_ids):
             raise ValueError('visit not found for this patient')
-        visits = sorted((owned[identifier] for identifier in visit_ids), key=lambda item: (item.creation_time, item.ID))
+        visits = sorted((owned[identifier] for identifier in visit_ids), key=visit_sort_key)
         available = {item.ID: item for visit in visits for item in visit.attachments}
         if document_ids is not None:
             if (not isinstance(document_ids, list) or len(document_ids) > 30

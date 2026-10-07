@@ -55,6 +55,39 @@ class FileService:
                     attachment_date, provenance, synthetic=False, order_id=None,
                     result_id=None, imaging_id=None, instruction_id=None,
                     medication_list=False, original_name=None):
+        connection = connect_database(self.database)
+        created = None
+        try:
+            with connection:
+                connection.execute('BEGIN IMMEDIATE')
+                created = self.import_in_transaction(connection, bundle_id, attachment_id,
+                    source_path, category, attachment_date, provenance, order_id=order_id,
+                    result_id=result_id, imaging_id=imaging_id, instruction_id=instruction_id,
+                    medication_list=medication_list, original_name=original_name)
+            created = None
+            return attachment_id
+        except sqlite3.IntegrityError:
+            raise ValueError('duplicate attachment ID or invalid attachment link') from None
+        except (OSError, sqlite3.Error) as error:
+            log_storage_error(self.database, 'attachment_import', error)
+            raise StorageError('could not store attachment; run reconciliation if cleanup failed') from None
+        finally:
+            connection.close()
+            if created is not None:
+                self.cleanup_uncommitted(created)
+
+    def cleanup_uncommitted(self, path):
+        try:
+            path.unlink(missing_ok=True)
+        except OSError as error:
+            log_storage_error(self.database, 'attachment_cleanup', error)
+
+    def import_in_transaction(self, connection, bundle_id, attachment_id, source_path,
+                    category, attachment_date, provenance, order_id=None, result_id=None,
+                    imaging_id=None, instruction_id=None, medication_list=False, original_name=None):
+        """Use an existing write transaction; caller cleans bytes if commit fails."""
+        if not connection.in_transaction:
+            raise ValueError('attachment requires an active write transaction')
         # Retain the legacy keyword for compatibility with existing callers.
         # File validation is independent of labels describing the dataset.
         validate_record_id(attachment_id, 'AT', extended=True)
@@ -63,13 +96,12 @@ class FileService:
         if not isinstance(provenance, Provenance):
             raise ValueError("invalid provenance")
         provenance.checks()
-        if not isinstance(attachment_date, date) or isinstance(attachment_date, datetime):
+        if attachment_date is not None and (not isinstance(attachment_date, date) or isinstance(attachment_date, datetime)):
             raise ValueError("invalid date")
         if type(medication_list) is not bool:
             raise ValueError("invalid medication list link")
         if sum(value is not None for value in (order_id, result_id, imaging_id, instruction_id)) + medication_list > 1:
             raise ValueError("choose at most one attachment link")
-        connection = connect_database(self.database)
         created = None
         try:
             content, extension, mime = read_source(source_path)
@@ -78,48 +110,37 @@ class FileService:
             if validate_attachment_filename(name) != extension:
                 raise ValueError("attachment filename extension does not match file")
             stored_name = generate_attachment_stored_name(extension)
-            with connection:
-                connection.execute("BEGIN IMMEDIATE")
-                if connection.execute("SELECT 1 FROM referral_bundles WHERE bundle_id = ?", (bundle_id,)).fetchone() is None:
-                    raise ValueError("bundle not found")
-                if connection.execute("SELECT 1 FROM attachments WHERE sha256 = ?", (digest,)).fetchone():
-                    raise ValueError("duplicate attachment content")
-                connection.execute(
-                    "INSERT INTO attachments VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    (attachment_id, bundle_id, category.value, name, stored_name, mime,
-                     len(content), digest, attachment_date.isoformat(), provenance.source or "source not supplied"),
-                )
-                connection.execute(
-                    "INSERT INTO managed_attachments VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    (attachment_id, bundle_id, stored_name, digest, category.value,
-                     provenance.source_type.value, provenance.source_identifier,
-                     order_id, result_id, imaging_id, instruction_id, int(medication_list)),
-                )
-                if connection.execute("PRAGMA foreign_key_check").fetchone():
-                    raise ValueError("attachment link not found in this bundle")
-                path = self._path(stored_name)
-                self.root.mkdir(parents=True, exist_ok=True)
-                with path.open("xb") as stream:
-                    created = path
-                    stream.write(content)
-                    stream.flush()
-                    os.fsync(stream.fileno())
-                self.audit.record(connection, bundle_id, attachment_id, "import", "success")
-                connection.execute("UPDATE patients SET revision = revision + 1 WHERE patient_id = (SELECT patient_id FROM referral_bundles WHERE bundle_id = ?)", (bundle_id,))
-            created = None
-            return attachment_id
-        except sqlite3.IntegrityError:
-            raise ValueError("duplicate attachment ID or invalid attachment link") from None
-        except (OSError, sqlite3.Error) as error:
-            log_storage_error(self.database, "attachment_import", error)
-            raise StorageError("could not store attachment; run reconciliation if cleanup failed") from None
-        finally:
-            connection.close()
+            if connection.execute("SELECT 1 FROM referral_bundles WHERE bundle_id = ?", (bundle_id,)).fetchone() is None:
+                raise ValueError("bundle not found")
+            if connection.execute("SELECT 1 FROM attachments WHERE sha256 = ?", (digest,)).fetchone():
+                raise ValueError("duplicate attachment content")
+            connection.execute(
+                "INSERT INTO attachments VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (attachment_id, bundle_id, category.value, name, stored_name, mime,
+                 len(content), digest, attachment_date.isoformat() if attachment_date is not None else None, provenance.source or "source not supplied"),
+            )
+            connection.execute(
+                "INSERT INTO managed_attachments VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (attachment_id, bundle_id, stored_name, digest, category.value,
+                 provenance.source_type.value, provenance.source_identifier,
+                 order_id, result_id, imaging_id, instruction_id, int(medication_list)),
+            )
+            if connection.execute("PRAGMA foreign_key_check").fetchone():
+                raise ValueError("attachment link not found in this bundle")
+            path = self._path(stored_name)
+            self.root.mkdir(parents=True, exist_ok=True)
+            with path.open("xb") as stream:
+                created = path
+                stream.write(content)
+                stream.flush()
+                os.fsync(stream.fileno())
+            self.audit.record(connection, bundle_id, attachment_id, "import", "success")
+            connection.execute("UPDATE patients SET revision = revision + 1 WHERE patient_id = (SELECT patient_id FROM referral_bundles WHERE bundle_id = ?)", (bundle_id,))
+            return created
+        except BaseException:
             if created is not None:
-                try:
-                    created.unlink(missing_ok=True)
-                except OSError as error:
-                    log_storage_error(self.database, "attachment_cleanup", error)
+                self.cleanup_uncommitted(created)
+            raise
 
     def retrieve(self, attachment_id):
         """Return verified bytes and MIME type, never an internal storage path."""

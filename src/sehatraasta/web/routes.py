@@ -9,7 +9,7 @@ from time import time
 from urllib.parse import urlencode
 
 from flask import Blueprint, current_app, g, request, render_template, redirect, url_for, flash, send_file, session, jsonify
-import qrcode
+from sehatraasta.services.qr_image import render_qr_png
 
 from sehatraasta.domain import Provenance
 from sehatraasta.presentation.errors import error_from_exception
@@ -27,6 +27,8 @@ from sehatraasta.storage import SQLiteRepository
 from sehatraasta.storage.errors import StorageError
 from .forms import FORMS, convert_form, display_value
 from .intake import intake_page
+from .document_capture import capture_page
+from sehatraasta.domain.medical_dates import visit_sort_key
 from sehatraasta.services.unfinished_visit_service import UnfinishedVisitService
 
 
@@ -84,7 +86,7 @@ def form_page(kind, title, operation, target, initial=None, fields=None, subject
 @pages.get('/bundles')
 def queue():
     service = bundles()
-    return render_template('queue.html', title='page.bundles', rows=service.list_bundles(),
+    return render_template('queue.html', title='page.bundles', rows=sorted(service.list_bundles(), key=lambda row: visit_sort_key(row[1])),
         unfinished=UnfinishedVisitService(service.repository.path).list())
 
 
@@ -94,7 +96,8 @@ def save_unfinished_visit():
     try:
         saved = service.save(request.form.to_dict(flat=False), request.form.get('unfinished_id', ''),
                              int(request.form.get('unfinished_revision', '0')))
-        return jsonify(dict(saved, resume_url=location('bundle_new', unfinished=saved['draft_id'])))
+        endpoint = 'document_new' if request.form.get('capture') == 'paper' else 'bundle_new'
+        return jsonify(dict(saved, resume_url=location(endpoint, unfinished=saved['draft_id'])))
     except (ValueError, OverflowError):
         return jsonify(error='visit.save_conflict'), 409
     except StorageError:
@@ -141,6 +144,11 @@ def patient_delete(patient_id):
 @pages.route('/bundles/new', methods=['GET', 'POST'])
 def bundle_new():
     return intake_page(bundles, consume, location)
+
+
+@pages.route('/documents/new', methods=['GET', 'POST'])
+def document_new():
+    return capture_page(bundles, consume, location)
 
 
 def record_sections(bundle):
@@ -365,9 +373,7 @@ def doctor_report(patient_id, identifiers, include_documents, include_costs, doc
     for visit in visits:
         item = visit['bundle']
         payload = QRService(bundles().repository.path).for_bundle(item.ID)
-        buffer = BytesIO()
-        qrcode.make(payload).save(buffer, format='PNG')
-        visit['qr'] = base64.b64encode(buffer.getvalue()).decode('ascii')
+        visit['qr'] = base64.b64encode(render_qr_png(payload)).decode('ascii')
         visit['sections'] = [(title, rows) for title, rows in record_sections(item) if rows]
     choices = [('lang', g.language), ('selection', 'individual')]
     choices.extend(('visit', identifier) for identifier in identifiers)
