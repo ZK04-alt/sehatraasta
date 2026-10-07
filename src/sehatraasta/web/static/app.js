@@ -217,7 +217,8 @@ if (intake) {
       else add.focus();
     });
   });
-  intake.querySelector('[data-repeat="orders"]').addEventListener('input', refreshOrders);
+  const orderSection = intake.querySelector('[data-repeat="orders"]');
+  if (orderSection) orderSection.addEventListener('input', refreshOrders);
   refreshOrders();
 }
 

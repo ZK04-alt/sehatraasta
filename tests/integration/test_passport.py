@@ -64,9 +64,12 @@ def test_old_schema_three_passport_remains_importable(case, tmp_path):
     with ZipFile(BytesIO(PassportService(case).export('SR-CASE-001'))) as original:
         members = {name: original.read(name) for name in original.namelist() if name != 'manifest.json'}
     document = json.loads(members['passport.json'])
+    document['version'] = 1
     tables = document['tables']
     del tables['visit_drafts']; del tables['visit_draft_fields']
     tables['schema_version'] = [row for row in tables['schema_version'] if row['version'] <= 3]
+    for visit in tables['referral_bundles']:
+        del visit['medical_date_kind']; del visit['medical_date_value']
     members['passport.json'] = json.dumps(document).encode()
     output = BytesIO()
     with ZipFile(output, 'w', ZIP_DEFLATED) as archive:
@@ -191,10 +194,13 @@ def test_legacy_backup_restores_with_empty_context(case, tmp_path):
     with ZipFile(folder / name) as original, ZipFile(old, 'w', ZIP_DEFLATED) as target:
         members = {name: original.read(name) for name in original.namelist() if name != 'manifest.json'}
         data = json.loads(members['dataset.json'])
+        data['version'] = 2
         del data['tables']['referral_context']
         del data['tables']['visit_drafts']
         del data['tables']['visit_draft_fields']
         data['tables']['schema_version'] = [row for row in data['tables']['schema_version'] if row['version'] < 3]
+        for visit in data['tables']['referral_bundles']:
+            del visit['medical_date_kind']; del visit['medical_date_value']
         members['dataset.json'] = json.dumps(data).encode()
         target.writestr('manifest.json', json.dumps({name: hashlib.sha256(value).hexdigest() for name, value in members.items()}))
         for name, value in members.items():

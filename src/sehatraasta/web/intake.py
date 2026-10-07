@@ -126,7 +126,7 @@ def intake_page(get_service, consume, location):
 
     patient_fields = display_fields(FORMS['patient'], values=values)
     existing_fields = display_fields([field('patient_id', 'patient', 'select', choices=[
-        (patient.ID, patient.name + ' · ' + str(patient.birth_year) + ' · ' + str(index + 1)) for index, patient in enumerate(patients)])])
+        (patient.ID, patient.name + (f' · {patient.birth_year}' if patient.birth_year else '') + ' · ' + str(index + 1)) for index, patient in enumerate(patients)])])
     referral_fields = display_fields(FORMS['bundle'][1:], values=values)
     groups = []
     all_fields = {item['name']: item for item in patient_fields + existing_fields + referral_fields}

@@ -116,10 +116,12 @@ def test_ref_time():
         ref = ReferralBundle("PK-001", dt, "lahore", "karachi", ReferralStatus.DRAFT)
 
 
-def test_ref_missing_source():
+def test_ref_facility_is_optional_and_not_invented():
     dt = datetime(2026, 8, 27, 15, 30, 0)
-    with pytest.raises(ValueError, match="missing source facility"):
-        ref = ReferralBundle("PK-001", dt, "", "karachi", ReferralStatus.DRAFT)
+    ref = ReferralBundle("PK-001", dt, "", "karachi", ReferralStatus.DRAFT)
+    assert ref.source_facility == ""
+    assert ref.medical_date_kind == 'unknown'
+    assert ref.medical_date_value is None
 
 
 def test_ref_unknown_referral():

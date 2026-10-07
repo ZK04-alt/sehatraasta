@@ -44,10 +44,10 @@ def submitted_value(item, values, name=None):
 
 
 FORMS = {
-    'patient': [ID, field('name'), field('birth_year', kind='year', convert=int), enum_field('language', Language)],
+    'patient': [ID, field('name'), field('birth_year', kind='year', required=False, convert=int), enum_field('language', Language)],
     'bundle': [field('patient_id', 'patient', 'select', choices=[]), field('creation_time', 'created', 'datetime-local', convert=datetime.fromisoformat),
-               field('source_facility', 'facility'), field('destination', required=False)],
-    'edit': [field('source_facility', 'facility'), field('destination', required=False)],
+               field('source_facility', 'facility', required=False), field('destination', required=False)],
+    'edit': [field('source_facility', 'facility', required=False), field('destination', required=False)],
     'medication': [ID, field('name'),
                    preset('strength', ['5 mg', '10 mg', '20 mg', '50 mg', '100 mg', '250 mg', '500 mg', '1 g']),
                    preset('dose', ['1 tablet', '2 tablets', '1 capsule', '5 mL', '10 mL']),
@@ -78,6 +78,14 @@ FORMS = {
 # Public entry forms never ask users to allocate record identifiers.
 for name in ('patient', 'medication', 'result', 'imaging', 'cost', 'attachment'):
     FORMS[name] = [item for item in FORMS[name] if item['name'] != 'ID']
+
+for item in FORMS['patient']:
+    if item['name'] == 'birth_year':
+        item['default'] = None
+for item in FORMS['attachment']:
+    if item['name'] in ('date', 'category'):
+        item['required'] = False
+        item['default'] = None if item['name'] == 'date' else AttachmentCategory.OTHER
 
 # Display labels do not rename stored fields or change existing records.
 LABELS = {

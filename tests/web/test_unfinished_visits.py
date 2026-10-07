@@ -82,14 +82,14 @@ def test_finish_saved_visit_removes_unfinished_atomically(app):
 def test_invalid_finish_leaves_saved_partial_and_no_bundle(app):
     client = app.test_client()
     data = values()
-    data['birth_year'] = ''
+    data['name'] = ''
     later(client, data)
     saved = service(app).list()[0]
     data['intent'] = 'save'
     data['unfinished_id'] = saved['draft_id']
     data['unfinished_revision'] = str(saved['revision'])
     assert post(client, data).status_code == 422
-    assert service(app).get(saved['draft_id'])['fields']['birth_year'] == ['']
+    assert service(app).get(saved['draft_id'])['fields']['name'] == ['']
     assert app.extensions['bundles'].list_bundles() == []
 
 
@@ -188,13 +188,15 @@ def test_old_backups_restore_into_new_schema(app, tmp_path, version):
     assert len(SQLiteRepository(destination / 'sehatraasta.sqlite').list_patients()) == 1
 
 
-def test_version_three_database_upgrades_without_losing_patient(app):
-    connection = connect_database(app.config['DATABASE'])
+def test_version_three_database_upgrades_without_losing_patient(app, tmp_path):
+    from sehatraasta.storage.db import MIGRATION_PATH
+    legacy = tmp_path / 'genuine-schema-three.sqlite'
+    connection = connect_database(legacy)
+    for migration in ('001_initial.sql', '002_attachments.sql', '003_passport.sql'):
+        connection.executescript(MIGRATION_PATH.with_name(migration).read_text(encoding='utf-8'))
     with connection:
-        connection.execute('DROP TABLE visit_draft_fields')
-        connection.execute('DROP TABLE visit_drafts')
-        connection.execute('DELETE FROM schema_version WHERE version = 4')
+        connection.execute("INSERT INTO patients (patient_id, display_name, birth_year, language) VALUES ('PK-001', 'Existing Demo', 1980, 'ENGLISH')")
     connection.close()
-    initialize_database(app.config['DATABASE'])
-    assert SQLiteRepository(app.config['DATABASE']).list_patients()[0].name == 'Existing Demo'
-    assert service(app).list() == []
+    initialize_database(legacy)
+    assert SQLiteRepository(legacy).list_patients()[0].name == 'Existing Demo'
+    assert UnfinishedVisitService(legacy).list() == []

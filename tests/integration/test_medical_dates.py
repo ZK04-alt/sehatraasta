@@ -82,3 +82,22 @@ def test_new_archives_have_explicit_versions_and_keep_uncertain_date(tmp_path):
     backup.restore(tmp_path / 'exports' / name, tmp_path / 'restore', confirmed=True)
     visit = BundleService(SQLiteRepository(tmp_path / 'restore/sehatraasta.sqlite')).get_bundle('RB-001')
     assert (visit.medical_date_kind, visit.medical_date_value) == ('approximate', '2020-02')
+
+
+def test_json_archive_new_writer_declares_version_and_reads_legacy(tmp_path):
+    import json
+    from sehatraasta.storage.repositories import JsonRepository
+    path = tmp_path / 'fictional.json'
+    path.write_text(json.dumps({'format_version': 1, 'synthetic_only': True, 'patients': []}))
+    service = BundleService(JsonRepository(path))
+    service.create_patient('PK-001', 'Fictional no demographics', None, Language.ENGLISH)
+    document = json.loads(path.read_text())
+    assert document['format_version'] == 2
+    assert JsonRepository(path).get_patient('PK-001').birth_year is None
+    document['format_version'] = 99
+    path.write_text(json.dumps(document))
+    before = path.read_bytes()
+    from sehatraasta.storage.errors import StorageError
+    with pytest.raises(StorageError):
+        JsonRepository(path)
+    assert path.read_bytes() == before

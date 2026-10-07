@@ -369,7 +369,7 @@ class JsonRepository(PatientRepository):
 
         try:
             document = json.loads(self.path.read_text(encoding="utf-8"))
-            if document.get("format_version") != 1:
+            if type(document.get("format_version")) is not int or document["format_version"] not in (1, 2):
                 raise ValueError("unsupported development file version")
             if document.get("synthetic_only") is not True:
                 raise ValueError("development file is not marked synthetic")
@@ -392,7 +392,7 @@ class JsonRepository(PatientRepository):
             self._load_patients()
 
         document = {
-            "format_version": 1,
+            "format_version": 2,
             "synthetic_only": True,
             "patients": [patient_to_dict(item) for item in self.patients],
         }

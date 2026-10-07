@@ -32,6 +32,8 @@ class ExportService:
             for name, categories in groups.items()
         }
         payload = {
+            "format": "sehatraasta-visit-summary",
+            "format_version": 2,
             "warning": SYNTHETIC_WARNING,
             "patient": {
                 "ID": patient.ID,

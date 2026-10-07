@@ -32,7 +32,8 @@ SCHEMAS = {
 
 
 OPTIONAL_FIELDS = {
-    'referral': {'destination'},
+    'patient': {'birth_year'},
+    'referral': {'destination', 'source_facility'},
     'medications': {'route', 'instructions', 'source'},
     'orders': {'source'},
     'results': {'source', 'interpretation'},
@@ -57,7 +58,7 @@ def parse_values(section, index, values, issues):
     for field, kind in SCHEMAS[section].items():
         value = values.get(field, '')
         if isinstance(value, str) and not value.strip() and field in OPTIONAL_FIELDS.get(section, set()):
-            parsed[field] = ''
+            parsed[field] = None if section == 'patient' and field == 'birth_year' else ''
             continue
         if not isinstance(value, str) or not value.strip():
             issues.append(issue(section, index, field, 'error.required'))
@@ -119,7 +120,7 @@ class IntakeService:
             if len(values) == len(SCHEMAS['patient']):
                 try:
                     patient = Patient(allocator.allocate('patient'), **values)
-                    if patient.birth_year > 9223372036854775807:
+                    if patient.birth_year is not None and patient.birth_year > 9223372036854775807:
                         raise ValueError('invalid birth year')
                 except ValueError as error:
                     issues.append(domain_issue('patient', None, error))
