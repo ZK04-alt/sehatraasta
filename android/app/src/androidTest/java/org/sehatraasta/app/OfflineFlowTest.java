@@ -35,7 +35,20 @@ public class OfflineFlowTest {
             activity.getActivity().checkSelfPermission(android.Manifest.permission.CAMERA));
         open("/lookup?lang=en", "typeof window.srQRResult==='function'");
         js("document.querySelector('[data-scan-camera]').click()");
-        clickNative("com.android.permissioncontroller:id/permission_deny_button");
+        waitNative("com.android.permissioncontroller:id/permission_deny_button");
+        // Permission-dialog animation can invalidate the first accessibility
+        // node/bounds; inject a real touch using the settled current window.
+        Thread.sleep(700);
+        AccessibilityNodeInfo deny=waitNative("com.android.permissioncontroller:id/permission_deny_button");
+        Rect bounds=new Rect();deny.getBoundsInScreen(bounds);
+        long time=android.os.SystemClock.uptimeMillis();
+        android.view.MotionEvent down=android.view.MotionEvent.obtain(time,time,android.view.MotionEvent.ACTION_DOWN,bounds.centerX(),bounds.centerY(),0);
+        android.view.MotionEvent up=android.view.MotionEvent.obtain(time,time+50,android.view.MotionEvent.ACTION_UP,bounds.centerX(),bounds.centerY(),0);
+        down.setSource(android.view.InputDevice.SOURCE_TOUCHSCREEN);up.setSource(android.view.InputDevice.SOURCE_TOUCHSCREEN);
+        try {
+            assertTrue(InstrumentationRegistry.getInstrumentation().getUiAutomation().injectInputEvent(down,true));
+            assertTrue(InstrumentationRegistry.getInstrumentation().getUiAutomation().injectInputEvent(up,true));
+        } finally {down.recycle();up.recycle();}
         waitNative("android.webkit.WebView");
         waitFor("document.querySelector('[data-scan-status]').innerText.includes('unavailable')");
         assertTrue(js("document.querySelector('[data-scan-status]').innerText").contains("printed code"));
@@ -404,7 +417,17 @@ public class OfflineFlowTest {
         saveScreen("selected-visit-report.png");
         open(second+"/delete", "document.querySelector('[name=confirm]')");
         js("document.querySelector('[name=confirm]').checked=true;document.querySelector('form.entry-form').submit()");
-        waitFor("location.pathname==="+JSONObject.quote(patientPath));
+        waitFor("location.pathname==='/removed' && document.body.innerText.includes('Second verification clinic')");
+        // Ordinary removal now keeps recoverable records; exercise real UI undo.
+        js("Array.from(document.querySelectorAll('article')).find(a=>a.innerText.includes('Second verification clinic')).querySelector('a[href*=restore]').click()");
+        waitFor("document.querySelector('[name=confirm]')");
+        js("document.querySelector('[name=confirm]').checked=true;document.querySelector('form.entry-form').submit()");
+        waitFor("location.pathname==='/removed' && !Array.from(document.querySelectorAll('article')).some(a=>a.innerText.includes('Second verification clinic'))");
+        open(second,"document.body.innerText.includes('Second verification clinic')");
+        open(second+"/delete", "document.querySelector('[name=confirm]')");
+        js("document.querySelector('[name=confirm]').checked=true;document.querySelector('form.entry-form').submit()");
+        waitFor("location.pathname==='/removed'");
+        open(patientPath,"document.querySelector('main')");
         assertFalse(stringValue("document.body.innerText").contains("Second verification clinic"));
         open(first, "document.querySelector('#attachments')");
     }

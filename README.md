@@ -33,6 +33,7 @@ SehatRaasta organizes information as entered. It does not diagnose, interpret re
 
 ## Verification
 
+
 ```bash
 python -m pytest -q
 ```

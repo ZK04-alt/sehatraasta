@@ -66,6 +66,8 @@ jobs:
           NODE_PATH="$RUNNER_TEMP/browser-tools/node_modules" node tests/manual/report_browser.cjs
           NODE_PATH="$RUNNER_TEMP/browser-tools/node_modules" node tests/manual/repeated_use_browser.cjs
           NODE_PATH="$RUNNER_TEMP/browser-tools/node_modules" node tests/manual/capture_browser.cjs
+          NODE_PATH="$RUNNER_TEMP/browser-tools/node_modules" node tests/manual/final_layout.cjs
+          NODE_PATH="$RUNNER_TEMP/browser-tools/node_modules" node tests/manual/longitudinal_browser.cjs
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -74,6 +76,8 @@ jobs:
             tmp/report-browser/
             tmp/repeated-browser/
             tmp/resumed-browser/
+            tmp/final-layout/
+            tmp/longitudinal-browser/
           retention-days: 7
 
   android:
