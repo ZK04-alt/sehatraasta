@@ -69,7 +69,9 @@ def start(directory, cache_directory=None):
             pending = pointer.with_suffix('.tmp')
             pending.write_text(str(database.relative_to(root)), encoding='utf-8')
             pending.replace(pointer)
-            app.config['DATABASE'] = database
+            # The server handles one request at a time. Old forms must never
+            # target a restored dataset merely because IDs/revisions match.
+            app.config.update(DATABASE=database, DATASET_GENERATION=secrets.token_hex(24))
             app.extensions['bundles'] = service
         app.config['ACTIVATE_RESTORE'] = activate_restore
         token = secrets.token_hex(32)

@@ -72,3 +72,45 @@ def test_restored_dataset_is_activated_and_survives_restart(tmp_path):
         runtime._server.shutdown()
         runtime._server.server_close()
         runtime._server = runtime._connection = None
+
+
+def test_old_form_cannot_write_into_restored_dataset_with_same_ids(tmp_path):
+    """A revision match does not establish identity after a dataset switch."""
+    import re
+    from datetime import datetime
+    from io import BytesIO
+    from werkzeug.datastructures import FileStorage
+    from sehatraasta import android_runtime as runtime
+    from sehatraasta.domain import Language, ReferralStatus
+    from sehatraasta.services.bundle_service import BundleService
+    from sehatraasta.services.web_transfer_service import WebTransferService
+    from sehatraasta.storage import SQLiteRepository
+    runtime.start(tmp_path)
+    try:
+        app = runtime._server.app.app
+        original = BundleService(SQLiteRepository(app.config['DATABASE']))
+        donor = BundleService(SQLiteRepository(tmp_path / 'donor.sqlite'))
+        for service, name in [(original, 'Fictional original A'), (donor, 'Fictional restored B')]:
+            service.create_patient('PK-001', name, None, Language.ENGLISH)
+            service.create_bundle('PK-001', 'RB-001', datetime(2026, 10, 7), '', '', ReferralStatus.DRAFT)
+        client = app.test_client()
+        url = '/bundles/RB-001/medications/new'
+        token = re.search(r'name="csrf" value="([^"]+)"', client.get(url).text)[1]
+        _, restored = WebTransferService(original).restore(
+            FileStorage(BytesIO(WebTransferService(donor).backup()), filename='fictional.zip'), confirm=True)
+        app.config['ACTIVATE_RESTORE'](restored)
+        data = dict(name='Fictional stale A medicine', strength='1 mg', dose='1 tablet',
+                    route='By mouth', frequency='Once a day', duration='3 days', instructions='', source='')
+        response = client.post(url, data={'csrf': token, **data})
+        assert response.status_code == 409
+        assert 'records changed' in response.text
+        active = app.extensions['bundles']
+        assert active.get_patient('PK-001').name == 'Fictional restored B'
+        assert active.get_bundle('RB-001').medication_item == []
+        fresh = re.search(r'name="csrf" value="([^"]+)"', client.get(url).text)[1]
+        assert client.post(url, data={'csrf': fresh, **data}).status_code == 303
+        assert original.get_bundle('RB-001').medication_item == []
+    finally:
+        runtime._server.shutdown()
+        runtime._server.server_close()
+        runtime._server = runtime._connection = None

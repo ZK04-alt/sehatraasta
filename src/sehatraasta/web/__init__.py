@@ -21,7 +21,8 @@ def create_app(config=None):
     app.config.from_mapping(SECRET_KEY=secrets.token_hex(32), DATABASE=Path('instance/sehatraasta.sqlite').resolve(),
         DEBUG=False, MAX_CONTENT_LENGTH=102 * 1024 * 1024, MAX_FORM_MEMORY_SIZE=128 * 1024,
         MAX_FORM_PARTS=100, SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Strict',
-        TRUSTED_HOSTS=['127.0.0.1', 'localhost'], FORM_MAX_AGE=3600)
+        TRUSTED_HOSTS=['127.0.0.1', 'localhost'], FORM_MAX_AGE=3600,
+        DATASET_GENERATION=secrets.token_hex(24))
     if config:
         app.config.update(config)
     app.extensions['used_forms'] = {}
@@ -44,6 +45,7 @@ def create_app(config=None):
         if 'csrf' not in session:
             session['csrf'] = secrets.token_hex(24)
         return signer().dumps({'session': session['csrf'], 'path': path or request.path,
+                               'dataset': app.config['DATASET_GENERATION'],
                                'nonce': secrets.token_hex(16), 'errors': errors or [], 'visit_context':visit_context})
 
     @app.before_request
@@ -68,6 +70,9 @@ def create_app(config=None):
                     raise BadSignature('invalid')
             except (BadSignature, SignatureExpired, KeyError):
                 return render_template('error.html', title='error.form', code='error.form', status=400), 400
+            if token.get('dataset') != app.config['DATASET_GENERATION']:
+                return render_template('error.html', title='error.dataset_changed',
+                                       code='error.dataset_changed', status=409), 409
             used = app.extensions['used_forms']
             for key, timestamp in list(used.items()):
                 if time() - timestamp > app.config['FORM_MAX_AGE']:

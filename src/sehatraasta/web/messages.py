@@ -74,6 +74,7 @@ MESSAGES.update({
     'status.restored': ('Separate restore copy created. The active dataset is unchanged.', 'بحالی کی الگ نقل بن گئی۔ موجودہ ڈیٹا تبدیل نہیں ہوا۔', 'د بېرته جوړولو جلا کاپي جوړه شوه. فعال معلومات نه دي بدل شوي.'),
     'status.restored_android': ('Backup restored and opened. Previous records remain in a separate copy.', 'بیک اپ بحال ہو گیا اور کھول دیا گیا۔ پچھلے ریکارڈ الگ نقل میں محفوظ ہیں۔', 'بیک اپ بېرته جوړ او پرانیستل شو. پخواني ریکارډونه په جلا کاپي کې پاتې دي.'),
     'error.form': ('This form is invalid or expired. Reload the page and try again.', 'یہ فارم غلط یا زائد المیعاد ہے۔ صفحہ دوبارہ کھولیں۔', 'دا فورمه ناسمه یا پای ته رسېدلې ده. پاڼه بیا پرانیزئ.'),
+    'error.dataset_changed': ('The active records changed. Your change was not saved. Reopen the correct patient before trying again.', 'فعال ریکارڈ بدل گئے ہیں۔ آپ کی تبدیلی محفوظ نہیں ہوئی۔ دوبارہ کوشش کرنے سے پہلے درست مریض کھولیں۔', 'فعال ریکارډونه بدل شوي دي. ستاسو بدلون خوندي نه شو. له بیا هڅې مخکې سم ناروغ پرانیزئ.'),
     'error.local': ('Open SehatRaasta on this device.', 'اسی آلے پر صحت راستہ کھولیں۔', 'صحت راسته په همدې وسیله پرانیزئ.'),
     'error.too_large': ('The submitted request is too large. Use a smaller file.', 'درخواست بہت بڑی ہے۔ چھوٹی فائل استعمال کریں۔', 'غوښتنه ډېره لویه ده. کوچنی فایل وکاروئ.'),
     'error.check_first': ('Check this archive before confirming restore.', 'بحالی کی تصدیق سے پہلے یہ فائل جانچیں۔', 'د بېرته جوړولو له تایید مخکې دا فایل وګورئ.'),

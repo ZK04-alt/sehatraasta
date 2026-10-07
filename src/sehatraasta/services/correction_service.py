@@ -199,11 +199,10 @@ class CorrectionService:
                     self.touch(connection, patient_id)
                     return
                 from .recovery_service import RecoveryService
-                import secrets
-                from .identifiers import ALPHABET
+                from .identifiers import IDAllocator
                 previous = dict(connection.execute('SELECT * FROM attachments WHERE attachment_id=?', (attachment_id,)).fetchone())
                 retained = dict(row)
-                retained_id = 'AT-' + ''.join(secrets.choice(ALPHABET) for _ in range(6))
+                retained_id = IDAllocator.from_connection(connection).allocate('attachment')
                 previous['attachment_id'] = retained['attachment_id'] = retained_id
                 for key in ('order_id', 'result_id', 'imaging_id', 'instruction_id'):
                     retained[key] = None
