@@ -39,11 +39,16 @@ class ReferralContextService:
         finally:
             connection.close()
 
-    def save(self, bundle_id, values):
+    def save(self, bundle_id, values, expected_visit=None):
         data = validate_context(values)
         connection = connect_database(self.database)
         try:
             with connection:
+                connection.execute('BEGIN IMMEDIATE')
+                if expected_visit is not None:
+                    row=connection.execute('SELECT b.bundle_id,p.patient_id,p.revision FROM referral_bundles b JOIN patients p USING(patient_id) WHERE b.bundle_id=?',(bundle_id,)).fetchone()
+                    if row is None or list(row)!=expected_visit:
+                        raise ValueError('patient or visit changed; reopen before saving')
                 if not connection.execute('SELECT 1 FROM referral_bundles WHERE bundle_id = ?', (bundle_id,)).fetchone():
                     raise ValueError('bundle not found')
                 connection.execute('''INSERT INTO referral_context
@@ -55,8 +60,9 @@ class ReferralContextService:
                      follow_up_date=excluded.follow_up_date, source=excluded.source, updated_at=excluded.updated_at''',
                     (bundle_id, *(data[name] for name in TEXT_FIELDS[:5]), data['follow_up_date'],
                      data['source'], datetime.now(timezone.utc).isoformat(timespec='seconds')))
-                connection.execute("INSERT INTO audit_events(bundle_id, timestamp, action, entity_type, entity_id, actor_label, result) VALUES (?, ?, 'update context', 'referral', ?, 'device user', 'success')",
-                    (bundle_id, datetime.now(timezone.utc).isoformat(), bundle_id))
+                from .recovery_service import RecoveryService
+                connection.execute("INSERT INTO audit_events(audit_event_id, bundle_id, timestamp, action, entity_type, entity_id, actor_label, result) VALUES (?, ?, ?, 'update context', 'referral', ?, 'device user', 'success')",
+                    (RecoveryService.maximum_id(connection,'audit_events','audit_event_id')+1,bundle_id, datetime.now(timezone.utc).isoformat(), bundle_id))
                 connection.execute('UPDATE patients SET revision=revision+1 WHERE patient_id=(SELECT patient_id FROM referral_bundles WHERE bundle_id=?)', (bundle_id,))
         except sqlite3.Error as error:
             log_storage_error(self.database, 'save_context', error)

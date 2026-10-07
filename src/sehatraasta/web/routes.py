@@ -38,7 +38,8 @@ pages = Blueprint('pages', __name__)
 def bundles():
     if 'bundles' not in current_app.extensions:
         current_app.extensions['bundles'] = BundleService(SQLiteRepository(current_app.config['DATABASE']))
-    return current_app.extensions['bundles']
+    service = current_app.extensions['bundles']
+    return BundleService(service.repository, g.expected_visit) if g.enforce_visit_context else service
 
 
 def location(endpoint, **values):
@@ -54,10 +55,18 @@ def form_page(kind, title, operation, target, initial=None, fields=None, subject
     fields = fields or FORMS[kind]
     values = dict(request.form) if request.method == 'POST' else (initial or {})
     errors, status = [], 200
+    identity, visit_context = {}, None
+    if request.view_args and request.view_args.get('bundle_id'):
+        owner,visit = bundles().get_bundle_owner(request.view_args['bundle_id'])
+        identity = {'patient':owner,'visit':visit}
+        visit_context = g.expected_visit if request.method == 'POST' else [visit.ID,owner.ID,owner._storage_revision]
     if request.method == 'POST' and request.form.get('intent') != 'language':
         parsed, errors = convert_form(fields, values, request.files)
         if not errors:
             try:
+                if identity and (not isinstance(visit_context,list) or len(visit_context)!=3 or visit_context[0]!=identity['visit'].ID):
+                    raise ValueError('patient or visit changed; reopen before saving')
+                g.enforce_visit_context = bool(identity)
                 next_page = operation(parsed)
                 consume()
                 flash('status.deleted' if kind == 'delete' else 'status.saved')
@@ -66,28 +75,38 @@ def form_page(kind, title, operation, target, initial=None, fields=None, subject
                 presented = error_from_exception(error)
                 error_field = next((item['name'] for item in fields
                     if re.search(r'\b' + re.escape(item['name'].lower().replace('_', ' ')) + r'\b', str(error).lower())), fields[0]['name'])
-                errors = [{'field': error_field, 'code': presented.code}]
-                status = 409 if 'duplicate' in str(error) else 422
+                changed = 'changed' in str(error)
+                errors = [{'field': None if changed else error_field, 'code': 'correction.changed' if changed else presented.code}]
+                status = 409 if changed or 'duplicate' in str(error) else 422
             except StorageError as error:
                 from sehatraasta.storage.errors import log_storage_error
                 log_storage_error(current_app.config['DATABASE'], 'web_save', error)
                 errors = [{'field': None, 'code': 'error.unavailable'}]
                 status = 503
+            finally:
+                g.enforce_visit_context = False
         if errors and status == 200:
             status = 422
     elif request.method == 'POST' and request.form.get('had_errors') == '1':
         # Keep signed display codes, not private values, when changing language.
         errors = g.previous_errors
     return render_template('form.html', title=title, fields=fields, values=values,
-                           errors=errors, back=target, kind=kind, subject=subject), status
+                           errors=errors, back=target, kind=kind, subject=subject,visit_context=visit_context,**identity), status
 
 
 @pages.get('/')
 @pages.get('/bundles')
 def queue():
     service = bundles()
-    return render_template('queue.html', title='page.bundles', rows=sorted(service.list_bundles(), key=lambda row: visit_sort_key(row[1])),
+    query = request.args.get('q','').strip().casefold()
+    rows = [(owner,visit) for owner,visit in service.list_bundles() if visit_matches(owner,visit,query)]
+    return render_template('queue.html', title='page.bundles', query=request.args.get('q',''), rows=sorted(rows, key=lambda row: visit_sort_key(row[1])),
         unfinished=UnfinishedVisitService(service.repository.path).list())
+
+
+def visit_matches(owner,visit,query):
+    return not query or query in ' '.join([owner.name, str(owner.birth_year or ''),visit.source_facility,
+        visit.destination,visit.medical_date_value or '', *[paper.name for paper in visit.attachments]]).casefold()
 
 
 @pages.post('/visits/unfinished')
@@ -109,6 +128,24 @@ def patients():
     return render_template('patients.html', title='page.patients', patients=bundles().list_patients())
 
 
+@pages.route('/visits/unfinished/<draft_id>/discard',methods=['GET','POST'])
+def discard_unfinished_visit(draft_id):
+    service=UnfinishedVisitService(bundles().repository.path)
+    saved=service.get(draft_id)
+    error,status=None,200
+    if request.method=='POST':
+        try:
+            if request.form.get('confirm')!='yes': raise ValueError('confirmation required')
+            service.discard(draft_id,int(request.form.get('revision','')))
+            consume()
+            flash('capture.discarded')
+            return redirect(location('queue'),code=303)
+        except (ValueError,OverflowError):
+            error,status=('error.required',422) if request.form.get('confirm')!='yes' else ('correction.changed',409)
+    patient=bundles().get_patient(saved['patient_id']) if saved['patient_id'] else None
+    return render_template('discard_draft.html',title='capture.discard',saved=saved,patient=patient,error=error),status
+
+
 @pages.route('/patients/new', methods=['GET', 'POST'])
 def patient_new():
     def save(data):
@@ -118,27 +155,16 @@ def patient_new():
 
 @pages.get('/patients/<patient_id>')
 def patient(patient_id):
-    return render_template('patient.html', title='page.patient', patient=bundles().get_patient(patient_id))
+    owner = bundles().get_patient(patient_id)
+    query = request.args.get('q','').strip().casefold()
+    return render_template('patient.html', title='page.patient',patient=owner,query=request.args.get('q',''),
+        found_visits=[visit for visit in owner.referrals if visit_matches(owner,visit,query)])
 
 
 @pages.route('/patients/<patient_id>/delete', methods=['GET', 'POST'])
 def patient_delete(patient_id):
-    item = bundles().get_patient(patient_id)
-    error, status = None, 200
-    if request.method == 'POST':
-        if request.form.get('confirm') != 'yes':
-            error, status = 'error.required', 422
-        else:
-            try:
-                revision = int(request.form.get('revision', ''))
-                pending = PatientDeletionService(bundles().repository.path).delete(patient_id, revision)
-            except ValueError:
-                error, status = 'patient.delete_changed', 409
-            else:
-                consume()
-                flash('patient.delete_cleanup' if pending else 'status.deleted')
-                return redirect(location('patients'), code=303)
-    return render_template('patient_delete.html', title='action.patient_delete', patient=item, error=error), status
+    from .remediation_routes import remove_page
+    return remove_page('patient', patient_id)
 
 
 @pages.route('/bundles/new', methods=['GET', 'POST'])
@@ -189,6 +215,11 @@ def bundle(bundle_id):
     return render_template('bundle.html', title='page.bundle', patient=owner, bundle=bundle,
         groups=CompletenessService().group_categories(bundle), sections=record_sections(bundle),
         total=bundles().total_cost_pkr(bundle_id), printing=False,
+        editable_records=[(kind,str(getattr(item,'ID',getattr(item,'_storage_id',''))),
+            getattr(item,'name',getattr(item,'modality',getattr(item,'category',getattr(item,'facility','')))))
+            for kind,items in [('medication',bundle.medication_item),('order',bundle.investigation_orders),
+                ('result',bundle.diagnostic_results),('imaging',bundle.imaging_items),('instruction',bundle.instructions),
+                ('cost',bundle.cost_entries),('encounter',bundle.encounters)] for item in items],
         context=ReferralContextService(bundles().repository.path).get(bundle_id))
 
 
@@ -196,7 +227,7 @@ def bundle(bundle_id):
 def referral_context(bundle_id):
     bundles().get_bundle(bundle_id)
     service = ReferralContextService(bundles().repository.path)
-    return form_page('context', 'page.context', lambda data: service.save(bundle_id, data),
+    return form_page('context', 'page.context', lambda data: service.save(bundle_id, data, expected_visit=g.expected_visit),
         location('bundle', bundle_id=bundle_id), service.get(bundle_id))
 
 
@@ -239,11 +270,8 @@ def passport_import():
 
 @pages.route('/bundles/<bundle_id>/edit', methods=['GET', 'POST'])
 def bundle_edit(bundle_id):
-    item = bundles().get_bundle(bundle_id)
-    def save(data):
-        bundles().update_bundle(bundle_id, data['source_facility'], data['destination'], item.status)
-    return form_page('edit', 'page.bundle_edit', save, location('bundle', bundle_id=bundle_id),
-                     {'source_facility': item.source_facility, 'destination': item.destination, 'status': item.status.name})
+    from .remediation_routes import visit_editor
+    return visit_editor(bundle_id)
 
 
 @pages.route('/bundles/<bundle_id>/<kind>/new', methods=['GET', 'POST'])
@@ -345,10 +373,8 @@ def attachment_print_pages(attachment_id):
 
 @pages.route('/attachments/<attachment_id>/delete', methods=['GET', 'POST'])
 def delete(attachment_id):
-    owner, attachment = bundles().get_attachment_owner(attachment_id)
-    def save(d):
-        FileService(bundles().repository.path).delete(attachment_id)
-    return form_page('delete', 'page.delete', save, location('bundle', bundle_id=owner.ID), subject=attachment.name)
+    from .remediation_routes import remove_page
+    return remove_page('document', attachment_id)
 
 
 @pages.get('/bundles/<bundle_id>/audit')
@@ -423,21 +449,8 @@ def report_response(patient, chosen, include_documents, costs, documents=None):
 
 @pages.route('/bundles/<bundle_id>/delete', methods=['GET', 'POST'])
 def visit_delete(bundle_id):
-    owner, item = bundles().get_bundle_owner(bundle_id)
-    error, status = None, 200
-    if request.method == 'POST':
-        if request.form.get('confirm') != 'yes':
-            error, status = 'error.required', 422
-        else:
-            try:
-                pending = VisitDeletionService(bundles().repository.path).delete(bundle_id, int(request.form.get('revision', '')))
-            except ValueError:
-                error, status = 'patient.delete_changed', 409
-            else:
-                consume()
-                flash('patient.delete_cleanup' if pending else 'status.deleted')
-                return redirect(location('patient', patient_id=owner.ID), code=303)
-    return render_template('visit_delete.html', title='visit.remove', patient=owner, bundle=item, error=error), status
+    from .remediation_routes import remove_page
+    return remove_page('visit', bundle_id)
 
 
 @pages.get('/sharing')
@@ -516,3 +529,7 @@ def policy():
 @pages.get('/favicon.ico')
 def favicon():
     return current_app.send_static_file('favicon.svg')
+
+
+from .remediation_routes import register as register_remediation
+register_remediation(pages)

@@ -33,6 +33,35 @@ def test_document_only_web_save_has_no_required_reconstruction(app):
     assert 'None' not in detail.text
 
 
+@pytest.mark.parametrize('content,name,message',[(b'x','bad.txt','PDF, PNG or JPEG'),
+    (b'x'*(5242880+1),'large.pdf','5 MiB'),(b'not a PDF','mismatch.pdf','PDF, PNG or JPEG')],ids=['unsupported','oversize','mismatched'])
+def test_file_error_explains_specific_next_action_and_keeps_text(app,content,name,message):
+    client=app.test_client()
+    response=submit(client,{'name':'Fictional retained typing','file':(BytesIO(content),name)})
+    assert response.status_code==422
+    assert message in response.text
+    assert 'Fictional retained typing' in response.text
+    assert BundleService(SQLiteRepository(app.config['DATABASE'])).list_patients()==[]
+
+
+def test_discard_is_confirmed_scoped_and_revision_checked(app):
+    from sehatraasta.services.unfinished_visit_service import UnfinishedVisitService
+    service=UnfinishedVisitService(app.config['DATABASE'])
+    SQLiteRepository(app.config['DATABASE'])
+    first=service.save({'mode':['new'],'name':['Fictional discarded draft'],'capture':['paper']})
+    second=service.save({'mode':['new'],'name':['Fictional retained draft'],'capture':['paper']})
+    client=app.test_client();url='/visits/unfinished/'+first['draft_id']+'/discard'
+    assert 'Fictional discarded draft' in client.get(url).text
+    assert 'Fictional retained draft' not in client.get(url).text
+    csrf=lambda:re.search(r'name="csrf" value="([^"]+)"',client.get(url).text)[1]
+    assert client.post(url,data={'csrf':csrf(),'revision':first['revision']}).status_code==422
+    assert len(service.list())==2
+    assert client.post(url,data={'csrf':csrf(),'revision':first['revision']-1,'confirm':'yes'}).status_code==409
+    assert len(service.list())==2
+    assert client.post(url,data={'csrf':csrf(),'revision':first['revision'],'confirm':'yes'}).status_code==303
+    assert [row['draft_id'] for row in service.list()]==[second['draft_id']]
+
+
 def test_capture_context_and_validation_do_not_lose_typed_work(app):
     service = BundleService(SQLiteRepository(app.config['DATABASE']))
     service.create_patient('PK-001', 'Fictional selected patient', None, Language.ENGLISH)

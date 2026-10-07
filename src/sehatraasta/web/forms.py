@@ -44,6 +44,7 @@ def submitted_value(item, values, name=None):
 
 
 FORMS = {
+    'encounter': [DAY, field('facility'), field('clinician_display_text',required=False),field('source_note',kind='textarea',required=False)],
     'patient': [ID, field('name'), field('birth_year', kind='year', required=False, convert=int), enum_field('language', Language)],
     'bundle': [field('patient_id', 'patient', 'select', choices=[]), field('creation_time', 'created', 'datetime-local', convert=datetime.fromisoformat),
                field('source_facility', 'facility', required=False), field('destination', required=False)],
@@ -86,6 +87,13 @@ for item in FORMS['attachment']:
     if item['name'] in ('date', 'category'):
         item['required'] = False
         item['default'] = None if item['name'] == 'date' else AttachmentCategory.OTHER
+
+FORMS['bundle'][1]['label'] = 'date.saved'
+FORMS['bundle'].extend([field('medical_date_kind','date_kind','select',required=False,
+    choices=[(kind,'date.'+kind) for kind in ('unknown','exact','approximate')]),
+    field('medical_date_value','medical_date',required=False)])
+FORMS['bundle'][-2]['default'] = 'unknown'
+FORMS['bundle'][-1]['hint'] = 'date.help'
 
 # Display labels do not rename stored fields or change existing records.
 LABELS = {

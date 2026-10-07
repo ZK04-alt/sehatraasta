@@ -128,7 +128,10 @@ class IntakeService:
         bundle = None
         if len(values) == len(SCHEMAS['referral']):
             try:
-                bundle = ReferralBundle(allocator.allocate('bundle'), **values)
+                from sehatraasta.domain.medical_dates import validate_medical_date
+                raw = data.get('referral',{})
+                kind,value = validate_medical_date(raw.get('medical_date_kind') or 'unknown',raw.get('medical_date_value') or None)
+                bundle = ReferralBundle(allocator.allocate('bundle'), **values,medical_date_kind=kind,medical_date_value=value)
             except ValueError as error:
                 issues.append(domain_issue('referral', None, error))
 

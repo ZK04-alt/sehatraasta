@@ -84,6 +84,8 @@ def main():
         "artifact": str(args.artifact.resolve()),
         "sha256": hashlib.sha256(data).hexdigest(),
         "size": len(data), "archives": archives,
+        "packaged_files": files,
+        "bootstrap_sha256": hashlib.sha256(ZipFile(BytesIO(data)).read('assets/chaquopy/bootstrap.imy')).hexdigest(),
         "distributions": distributions, "pillow_related_files": related,
         "native_libraries_checked": len(natives),
         "native_failures": [item for item in natives if not item["elf_16kb"] or item["zip_16kb"] is False],

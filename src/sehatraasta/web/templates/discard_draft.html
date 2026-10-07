@@ -1,0 +1,9 @@
+{% extends 'base.html' %}{% block content %}
+<p><strong><bdi dir="auto">{{ patient.name if patient else saved.fields.get('name',[''])[0] or t('visit.unnamed') }}</bdi></strong>{% if patient and patient.birth_year %} · {{ patient.birth_year }}{% endif %} · {{ t('visit.unfinished') }}</p>
+{% for key in ['source_facility','medical_date_value'] %}{% if saved.fields.get(key,[''])[0] %}<p><bdi dir="auto">{{ saved.fields[key][0] }}</bdi></p>{% endif %}{% endfor %}
+<p>{{ t('capture.discard_help') }}</p>
+{% if error %}<p role="alert">{{ t(error) }}</p>{% endif %}
+<form class="entry-form" method="post"><input type="hidden" name="csrf" value="{{ form_token() }}"><input type="hidden" name="revision" value="{{ saved.revision }}">
+<label><input type="checkbox" name="confirm" value="yes"> {{ t('capture.discard') }}</label>
+<div class="form-actions"><button>{{ t('capture.discard') }}</button><a href="{{ url_for('pages.queue',lang=lang) }}">{{ t('action.cancel') }}</a></div></form>
+{% endblock %}

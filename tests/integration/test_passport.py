@@ -66,7 +66,7 @@ def test_old_schema_three_passport_remains_importable(case, tmp_path):
     document = json.loads(members['passport.json'])
     document['version'] = 1
     tables = document['tables']
-    del tables['visit_drafts']; del tables['visit_draft_fields']
+    del tables['visit_drafts']; del tables['visit_draft_fields']; del tables['removed_items']
     tables['schema_version'] = [row for row in tables['schema_version'] if row['version'] <= 3]
     for visit in tables['referral_bundles']:
         del visit['medical_date_kind']; del visit['medical_date_value']
@@ -198,6 +198,7 @@ def test_legacy_backup_restores_with_empty_context(case, tmp_path):
         del data['tables']['referral_context']
         del data['tables']['visit_drafts']
         del data['tables']['visit_draft_fields']
+        del data['tables']['removed_items']
         data['tables']['schema_version'] = [row for row in data['tables']['schema_version'] if row['version'] < 3]
         for visit in data['tables']['referral_bundles']:
             del visit['medical_date_kind']; del visit['medical_date_value']

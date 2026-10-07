@@ -12,6 +12,7 @@
 <div data-patient-mode="new">{{ render_fields(name_fields, values, errors, t) }}</div>
 </fieldset>
 {{ render_fields([{'name':'file','label':'field.file','kind':'file','required':true}], values, errors, t) }}
+<p class="field-hint">{{ t('help.file') }}</p>
 <p class="muted">{{ t('capture.unsaved_file') }}</p>
 <details class="intake-section" {{ 'open' if values.get('source_facility') or values.get('birth_year') or values.get('medical_date_kind','unknown')!='unknown' or errors else '' }}><summary>{{ t('capture.details') }}</summary>
 {{ render_fields(optional_fields, values, errors, t) }}

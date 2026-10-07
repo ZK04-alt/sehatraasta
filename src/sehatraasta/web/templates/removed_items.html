@@ -1,0 +1,4 @@
+{% extends 'base.html' %}{% block content %}
+<p>{{ t('recovery.help') }}</p>
+{% for item in items %}<article class="section"><h2><bdi dir="auto">{{ item.label }}</bdi></h2>{% if item.context %}<p><bdi dir="auto">{{ item.context }}</bdi></p>{% endif %}<p><bdi dir="ltr">{{ item.removed_at }}</bdi></p><div class="inline-actions">{% if item.state=='removed' %}<a href="{{ url_for('pages.recovery_action',item_id=item.item_id,action='restore',lang=lang) }}">{{ t('recovery.restore') }}</a>{% else %}<p role="status">{{ t('recovery.pending') }}</p>{% endif %}<a href="{{ url_for('pages.recovery_action',item_id=item.item_id,action='permanent',lang=lang) }}">{{ t('recovery.permanent') }}</a></div></article>{% else %}<p>{{ t('state.empty') }}</p>{% endfor %}
+{% endblock %}

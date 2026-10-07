@@ -12,7 +12,7 @@
 <a class="skip" href="#main">{{ t('nav.skip') }}</a>
 <header class="masthead">
   <a class="brand" href="{{ url_for('pages.queue', lang=lang) }}"><img src="{{ url_for('static', filename='wordmark.svg') }}" width="220" height="64" alt="SehatRaasta"></a>
-  <details class="app-menu"><summary>{{ t('app.menu') }}</summary><nav aria-label="{{ t('app.menu') }}">{% for endpoint, key in [('sharing_help','sharing.title'),('passport_import','page.passport_import'),('backup','page.backup'),('restore','page.restore')] %}<a href="{{ url_for('pages.'+endpoint, lang=lang) }}">{{ t(key) }}</a>{% endfor %}<a href="/terms?lang={{ lang }}">{{ t('page.terms') }}</a><a href="/privacy?lang={{ lang }}">{{ t('page.privacy') }}</a></nav></details>
+  <details class="app-menu"><summary>{{ t('app.menu') }}</summary><nav aria-label="{{ t('app.menu') }}">{% for endpoint, key in [('removed_items','recovery.title'),('sharing_help','sharing.title'),('passport_import','page.passport_import'),('backup','page.backup'),('restore','page.restore')] %}<a href="{{ url_for('pages.'+endpoint, lang=lang) }}">{{ t(key) }}</a>{% endfor %}<a href="/terms?lang={{ lang }}">{{ t('page.terms') }}</a><a href="/privacy?lang={{ lang }}">{{ t('page.privacy') }}</a></nav></details>
   {% if fields is not defined %}<nav class="language-nav" aria-label="{{ t('nav.language') }}">{% for code, info in languages.items() %}<a href="{{ language_urls[code] }}" lang="{{ code }}" {% if code==lang %}aria-current="true"{% endif %}>{{ info[0] }}</a>{% endfor %}</nav>{% endif %}
 </header>
 <div class="workspace">

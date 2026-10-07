@@ -75,7 +75,7 @@ def test_v1_upgrade_preserves_records(tmp_path):
     initialize_database(database)
     initialize_database(database)
     assert SQLiteRepository(database).get_patient("PK-001").name == "Demo"
-    assert [row["version"] for row in rows(database)["schema_version"]] == [1, 2, 3, 4, 5]
+    assert [row["version"] for row in rows(database)["schema_version"]] == [1, 2, 3, 4, 5, 6]
 
 
 @pytest.mark.parametrize("extension,content,mime", [

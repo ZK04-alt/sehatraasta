@@ -19,7 +19,7 @@ def create_app(config=None):
     from . import messages
     app = Flask(__name__)
     app.config.from_mapping(SECRET_KEY=secrets.token_hex(32), DATABASE=Path('instance/sehatraasta.sqlite').resolve(),
-        DEBUG=False, MAX_CONTENT_LENGTH=55 * 1024 * 1024, MAX_FORM_MEMORY_SIZE=128 * 1024,
+        DEBUG=False, MAX_CONTENT_LENGTH=102 * 1024 * 1024, MAX_FORM_MEMORY_SIZE=128 * 1024,
         MAX_FORM_PARTS=100, SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Strict',
         TRUSTED_HOSTS=['127.0.0.1', 'localhost'], FORM_MAX_AGE=3600)
     if config:
@@ -40,11 +40,11 @@ def create_app(config=None):
     def signer():
         return URLSafeTimedSerializer(app.secret_key, salt='sr-form')
 
-    def form_token(path=None, errors=None):
+    def form_token(path=None, errors=None, visit_context=None):
         if 'csrf' not in session:
             session['csrf'] = secrets.token_hex(24)
         return signer().dumps({'session': session['csrf'], 'path': path or request.path,
-                               'nonce': secrets.token_hex(16), 'errors': errors or []})
+                               'nonce': secrets.token_hex(16), 'errors': errors or [], 'visit_context':visit_context})
 
     @app.before_request
     def prepare_request():
@@ -54,6 +54,8 @@ def create_app(config=None):
         g.language = language if language in LANGUAGES else 'en'
         g.form_nonce = None
         g.previous_errors = []
+        g.expected_visit = None
+        g.enforce_visit_context = False
         if request.remote_addr not in (None, '127.0.0.1', '::1'):
             return render_template('error.html', title='error.local', code='error.local', status=403), 403
         if request.method == 'POST':
@@ -74,6 +76,7 @@ def create_app(config=None):
                 return render_template('error.html', title='error.duplicate', code='error.duplicate', status=409), 409
             g.form_nonce = token['nonce']
             g.previous_errors = token.get('errors', [])
+            g.expected_visit = token.get('visit_context')
         session['lang'] = g.language
 
     @app.context_processor

@@ -13,8 +13,9 @@ from sehatraasta.domain import (
 
 
 class BundleService:
-    def __init__(self, repository):
+    def __init__(self, repository, expected_visit=None):
         self.repository = repository
+        self.expected_visit = expected_visit
 
     def create_patient(self, ID, name, birth_year, language):
         if ID is None:
@@ -65,6 +66,8 @@ class BundleService:
         for patient in self.repository.list_patients():
             for bundle in patient.referrals:
                 if bundle.ID == bundle_id:
+                    if self.expected_visit is not None and self.expected_visit != [bundle_id, patient.ID, patient._storage_revision]:
+                        raise ValueError('patient or visit changed; reopen before saving')
                     return patient, bundle
         raise ValueError("bundle not found")
 

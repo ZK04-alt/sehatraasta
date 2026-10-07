@@ -1,0 +1,6 @@
+<form method="get" class="entry-form">
+<input type="hidden" name="lang" value="{{ lang }}">
+<label for="find-records">{{ t('find.label') }}</label>
+<input type="search" id="find-records" name="q" value="{{ query }}" dir="auto">
+<div class="form-actions"><button>{{ t('find.action') }}</button><a href="{{ request.path }}?lang={{ lang }}">{{ t('find.clear') }}</a></div>
+</form>

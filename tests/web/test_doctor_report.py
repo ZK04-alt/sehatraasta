@@ -113,6 +113,10 @@ def test_removes_just_one_visit_files_tokens_and_links(app, client):
     assert len(service.get_patient('PK-001').referrals) == 2
     assert service.get_bundle('RB-004').source_facility == 'Other visit'
     assert client.get('/bundles/SR-DEMO-001').status_code == 404
+    from sehatraasta.services.recovery_service import RecoveryService
+    recovery = RecoveryService(app.config['DATABASE'])
+    assert len(list(FileService(app.config['DATABASE']).root.iterdir())) == 1  # retained for recovery
+    assert recovery.permanent(recovery.list()[0]['item_id']) == 0
     assert list(FileService(app.config['DATABASE']).root.iterdir()) == []
     with connect_database(app.config['DATABASE']) as connection:
         assert connection.execute('PRAGMA foreign_key_check').fetchall() == []

@@ -7,7 +7,7 @@
     --paper: #F2EEE5; --surface: #FBF8F0; --ink: #303A2B; --muted: #59634F;
     --teal: #48563B; --line: #A4AC97; --focus: #966244; --action-pressed: #34402A;
     font-family: "Public Sans", "Noto Sans Arabic", sans-serif; line-height: 1.55;
-    padding-block-end: 74px;
+    padding-block-end: calc(4.5rem + env(safe-area-inset-bottom, 0px));
   }
   .interface-app:lang(ur), .interface-app:lang(ps) { font-family: "Noto Sans Arabic", "Public Sans", sans-serif; line-height: 1.8; }
   .interface-app h1, .interface-app h2, .interface-app h3 { font-family: "Libre Franklin", "Noto Sans Arabic", sans-serif; }
@@ -42,11 +42,11 @@
   .interface-app .app-menu a { padding: .9rem; min-block-size: 52px; text-decoration: none; border-block-end: 1px solid var(--line); }
   .interface-app .workspace { display: block; min-block-size: calc(100vh - 215px); }
   .interface-app .sidebar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 3; padding: .3rem .5rem; background: var(--surface); border: 0; border-block-start: 1px solid var(--line); }
-  .interface-app .skip:focus { top: auto; bottom: 82px; left: 1rem; right: 1rem; inset-block-start: auto; inset-inline-start: 1rem; border: 1px solid var(--teal); }
+  .interface-app .skip:focus { top: auto; bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px)); left: 1rem; right: 1rem; inset-block-start: auto; inset-inline-start: 1rem; border: 1px solid var(--teal); }
   .interface-app .sidebar nav { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: .35rem; }
   .interface-app.keyboard-open .sidebar { display: none; }
   .interface-app.keyboard-open { padding-block-end: 0; }
-  .interface-app .sidebar a { display: flex; justify-content: center; align-items: center; min-block-size: 58px; padding: .4rem; font-size: .88rem; line-height: 1.4; text-align: center; }
+  .interface-app .sidebar a { display: flex; justify-content: center; align-items: center; min-inline-size: 0; overflow-wrap: anywhere; min-block-size: 58px; padding: .4rem; font-size: .88rem; line-height: 1.4; text-align: center; }
   .interface-app .sidebar a[aria-current] { color: var(--teal); background: var(--paper); border-block-end: 2px solid var(--teal); }
   .interface-app main { margin-inline: auto; padding: 1.5rem 1.25rem 2rem; max-inline-size: 900px; }
   .interface-app h1 { font-size: 27px; line-height: 1.3; font-weight: 650; }
@@ -67,7 +67,8 @@
   .interface-app .intake-nav { flex-wrap: nowrap; overflow-x: auto; gap: 1.25rem; margin-block: .5rem 1rem; }
   .interface-app .intake-nav a { white-space: nowrap; min-block-size: 48px; font-size: .88rem; }
   .interface-app .language-switch { margin-block: 1.25rem; gap: .75rem; }
-  .interface-app .language-switch label { flex: 1 0 100%; margin: 0; }
+  .interface-app .language-switch label { flex: 1 0 100%; margin: 0; min-inline-size: 0; overflow-wrap: anywhere; }
+  .interface-app .language-switch button { min-inline-size: 0; overflow-wrap: anywhere; white-space: normal; }
   .interface-app .language-switch select { flex: 1; min-inline-size: 0; }
   .interface-app .language-switch button { max-inline-size: 55%; }
   .interface-app .field-grid { gap: 1.75rem; }
@@ -103,7 +104,9 @@
   .interface-app .site-footer { display: none; }
   .interface-app .year-picker summary { min-block-size: 44px; }
   @media (max-width: 420px) {
-    .interface-app .field-grid { grid-template-columns: 1fr; }
+    .interface-app .language-switch select, .interface-app .language-switch button { flex: 1 0 100%; max-inline-size: 100%; inline-size: 100%; }
+    .interface-app .field-grid { grid-template-columns: minmax(0,1fr); }
+    .interface-app .field { min-inline-size: 0; }
     .interface-app .brand img { inline-size: 200px; }
   }
 }

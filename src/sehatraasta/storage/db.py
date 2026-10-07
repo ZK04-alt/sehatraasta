@@ -11,6 +11,7 @@ ATTACHMENT_MIGRATION = MIGRATION_PATH.with_name("002_attachments.sql")
 PASSPORT_MIGRATION = MIGRATION_PATH.with_name("003_passport.sql")
 UNFINISHED_MIGRATION = MIGRATION_PATH.with_name("004_unfinished_visits.sql")
 DOCUMENT_DATES_MIGRATION = MIGRATION_PATH.with_name("005_document_dates.sql")
+REMOVED_ITEMS_MIGRATION = MIGRATION_PATH.with_name("006_removed_items.sql")
 TABLE_NAMES = frozenset({
     "schema_version", "patients", "referral_bundles", "audit_events",
     "instructions", "cost_entries", "attachments", "imaging_items",
@@ -42,7 +43,7 @@ def check_database(connection):
         "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"
     )}
     versions = [row[0] for row in connection.execute("SELECT version FROM schema_version")]
-    if versions not in ([1], [1, 2], [1, 2, 3], [1, 2, 3, 4], [1, 2, 3, 4, 5]):
+    if versions not in ([1], [1, 2], [1, 2, 3], [1, 2, 3, 4], [1, 2, 3, 4, 5], [1, 2, 3, 4, 5, 6]):
         raise StorageError("unsupported database version")
     expected_tables = TABLE_NAMES
     if 2 in versions:
@@ -51,6 +52,8 @@ def check_database(connection):
         expected_tables = expected_tables | {"referral_context"}
     if 4 in versions:
         expected_tables = expected_tables | {"visit_drafts", "visit_draft_fields"}
+    if 6 in versions:
+        expected_tables = expected_tables | {"removed_items"}
     if tables != expected_tables:
         raise StorageError("unrecognized or incomplete database schema")
     # Also reject a database that has the right table names but different columns.
@@ -65,6 +68,8 @@ def check_database(connection):
             template.executescript(UNFINISHED_MIGRATION.read_text(encoding="utf-8"))
         if 5 in versions:
             template.executescript(DOCUMENT_DATES_MIGRATION.read_text(encoding="utf-8"))
+        if 6 in versions:
+            template.executescript(REMOVED_ITEMS_MIGRATION.read_text(encoding="utf-8"))
         expected = template.execute(
             "SELECT name, sql FROM sqlite_master WHERE sql IS NOT NULL ORDER BY name"
         ).fetchall()
@@ -152,6 +157,19 @@ def initialize_database(path):
                         if sql not in ("BEGIN TRANSACTION;", "COMMIT;"):
                             connection.execute(sql)
                         statement = ""
+                if statement.strip():
+                    raise StorageError('incomplete database migration')
+                check_database(connection)
+            versions = [row[0] for row in connection.execute('SELECT version FROM schema_version')]
+            if versions == [1, 2, 3, 4, 5]:
+                statement = ''
+                for line in REMOVED_ITEMS_MIGRATION.read_text(encoding='utf-8').splitlines():
+                    statement += line + '\n'
+                    if sqlite3.complete_statement(statement):
+                        sql = statement.strip()
+                        if sql not in ('BEGIN TRANSACTION;', 'COMMIT;'):
+                            connection.execute(sql)
+                        statement = ''
                 if statement.strip():
                     raise StorageError('incomplete database migration')
                 check_database(connection)

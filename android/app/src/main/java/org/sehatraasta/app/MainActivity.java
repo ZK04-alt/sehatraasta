@@ -20,11 +20,13 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
+import com.google.zxing.client.android.Intents;
 
 /** Native shell around the same offline referral application used on desktop. */
 public class MainActivity extends Activity {
     private static final int PICK_FILE = 10, SAVE_FILE = 11, PICK_QR = 12;
-    private static final long MAX_DOWNLOAD = 60L * 1024 * 1024;
+    // Whole-dataset backups support 100 MiB expanded data plus ZIP overhead.
+    private static final long MAX_DOWNLOAD = 102L * 1024 * 1024;
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
     private WebView web;
     private LinearLayout root;
@@ -157,6 +159,7 @@ public class MainActivity extends Activity {
                 } else {
                     try {
                         new IntentIntegrator(MainActivity.this).setDesiredBarcodeFormats(IntentIntegrator.QR_CODE)
+                                .addExtra(Intents.Scan.SHOW_MISSING_CAMERA_PERMISSION_DIALOG, false)
                                 .setBeepEnabled(false).setOrientationLocked(false)
                                 .setPrompt(prompt == null ? "SehatRaasta QR" : prompt.substring(0, Math.min(200, prompt.length())))
                                 .initiateScan();
@@ -250,7 +253,8 @@ public class MainActivity extends Activity {
         super.onActivityResult(request, result, data);
         IntentResult scanned = IntentIntegrator.parseActivityResult(request, result, data);
         if (scanned != null) {
-            qrResult(scanned.getContents(), scanned.getContents() == null ? "cancelled" : "success");
+            boolean denied = data != null && data.getBooleanExtra(Intents.Scan.MISSING_CAMERA_PERMISSION, false);
+            qrResult(scanned.getContents(), denied ? "unavailable" : scanned.getContents() == null ? "cancelled" : "success");
             return;
         }
         if (request == PICK_QR) {

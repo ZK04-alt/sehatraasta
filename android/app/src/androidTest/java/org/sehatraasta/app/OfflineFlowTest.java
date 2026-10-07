@@ -28,7 +28,59 @@ import java.nio.charset.StandardCharsets;
 /** End-to-end test runs under the separate org.sehatraasta.app.test app ID. */
 @org.junit.FixMethodOrder(org.junit.runners.MethodSorters.NAME_ASCENDING)
 public class OfflineFlowTest {
+    @Test public void a0CameraDeniedReturnsToLookup() throws Exception {
+        enableNativeInspection();
+        waitFor("document.querySelector('main')");
+        assertEquals(android.content.pm.PackageManager.PERMISSION_DENIED,
+            activity.getActivity().checkSelfPermission(android.Manifest.permission.CAMERA));
+        open("/lookup?lang=en", "typeof window.srQRResult==='function'");
+        js("document.querySelector('[data-scan-camera]').click()");
+        clickNative("com.android.permissioncontroller:id/permission_deny_button");
+        waitNative("android.webkit.WebView");
+        waitFor("document.querySelector('[data-scan-status]').innerText.includes('unavailable')");
+        assertTrue(js("document.querySelector('[data-scan-status]').innerText").contains("printed code"));
+    }
+    @Test public void zCorrectionRecoveryAndArchiveBoundsOffline() throws Exception {
+        waitFor("document.querySelector('main')");
+        // This runs in the packaged Python runtime, using only a separate fictional DB.
+        String root = activity.getActivity().getCacheDir().getAbsolutePath();
+        String code = "from pathlib import Path\nfrom tempfile import TemporaryDirectory\n"
+            + "from datetime import datetime\nfrom io import BytesIO\nimport zipfile\n"
+            + "from sehatraasta.storage import SQLiteRepository\nfrom sehatraasta.domain import Language, ReferralStatus\n"
+            + "from sehatraasta.services.bundle_service import BundleService\n"
+            + "from sehatraasta.services.correction_service import CorrectionService\n"
+            + "from sehatraasta.services.recovery_service import RecoveryService\n"
+            + "from sehatraasta.services.archive_reader import read_checked_members\n"
+            + "with TemporaryDirectory(dir=" + JSONObject.quote(root).replace("\\/", "/") + ") as folder:\n"
+            + " db=Path(folder)/'fictional.sqlite'\n s=BundleService(SQLiteRepository(db))\n"
+            + " s.create_patient('PK-900','Fictional packaged recovery',None,Language.ENGLISH)\n"
+            + " s.create_bundle('PK-900','RB-900',datetime(2026,10,7),'','',ReferralStatus.DRAFT)\n"
+            + " CorrectionService(db).visit('RB-900',s.get_patient('PK-900')._storage_revision,patient_id='PK-900',facility='Fictional',destination='',date_kind='approximate',date_value='2008')\n"
+            + " r=RecoveryService(db)\n item=r.remove('visit','RB-900',s.get_patient('PK-900')._storage_revision)\n r.restore(item)\n"
+            + " assert s.get_bundle('RB-900').medical_date_value=='2008'\n"
+            + "for method in (zipfile.ZIP_STORED,zipfile.ZIP_DEFLATED,zipfile.ZIP_BZIP2,zipfile.ZIP_LZMA):\n"
+            + " out=BytesIO()\n content=b'Fictional'*32768\n"
+            + " with zipfile.ZipFile(out,'w',method) as a: a.writestr('sample',content)\n"
+            + " with zipfile.ZipFile(BytesIO(out.getvalue())) as a: assert read_checked_members(a,a.infolist(),len(content))=={'sample':content}\n";
+        com.chaquo.python.Python python=com.chaquo.python.Python.getInstance();
+        python.getModule("builtins").callAttr("exec", code,python.getModule("builtins").callAttr("dict"));
+        js("location.href='/documents/new?lang=en'");
+        waitFor("document.querySelector('#file') && document.querySelector('#name')");
+        assertEquals("false", js("document.querySelector('#birth_year').required"));
+    }
     @Rule public ActivityTestRule<MainActivity> activity = new ActivityTestRule<>(MainActivity.class);
+
+    @org.junit.After public void closeOwnedNativeOverlays() throws Exception {
+        // The isolated emulator's test provider must not poison later cases.
+        android.os.ParcelFileDescriptor command=InstrumentationRegistry.getInstrumentation().getUiAutomation()
+            .executeShellCommand("am force-stop com.android.documentsui");
+        try(java.io.InputStream stream=new android.os.ParcelFileDescriptor.AutoCloseInputStream(command)) {
+            while(stream.read()!=-1) { }
+        }
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> activity.getActivity().startActivity(
+            new android.content.Intent(activity.getActivity(),MainActivity.class)
+                .addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP|android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP)));
+    }
 
     private WebView findWeb(View view) {
         if (view instanceof WebView) return (WebView) view;
@@ -40,6 +92,10 @@ public class OfflineFlowTest {
             }
         }
         return null;
+    }
+
+    private void revealRecordDetails() throws Exception {
+        js("document.querySelectorAll('details:not(.help-disclosure)').forEach(d=>{if(!d.open)d.querySelector('summary').click()})");
     }
 
     private String js(String code) throws Exception {
@@ -219,18 +275,6 @@ public class OfflineFlowTest {
             }
         }
         AccessibilityNodeInfo node = waitNative(name);
-        if (name.endsWith(".png")) {
-            // Tap the thumbnail, which is handled by the provider's RecyclerView
-            // rather than a TextView click listener.
-            AccessibilityNodeInfo row = node;
-            while (row.getParent() != null && row.getParent().getChildCount() < 4) row = row.getParent();
-            Rect bounds = new Rect(); row.getBoundsInScreen(bounds);
-            android.util.Log.i("SRNativeTest", "Image row enabled=" + row.isEnabled() + " bounds=" + bounds);
-            android.os.ParcelFileDescriptor command = InstrumentationRegistry.getInstrumentation().getUiAutomation()
-                    .executeShellCommand("input tap " + (bounds.left + 48) + " " + bounds.centerY());
-            try (java.io.InputStream output = new android.os.ParcelFileDescriptor.AutoCloseInputStream(command)) { while (output.read() != -1) { } }
-            return;
-        }
         while (node != null && !node.isFocusable()) node = node.getParent();
         assertNotNull("Document row must support focus", node);
         assertTrue(node.performAction(AccessibilityNodeInfo.ACTION_FOCUS));
@@ -241,6 +285,7 @@ public class OfflineFlowTest {
         up.setSource(android.view.InputDevice.SOURCE_KEYBOARD);
         assertTrue(InstrumentationRegistry.getInstrumentation().getUiAutomation().injectInputEvent(down, true));
         assertTrue(InstrumentationRegistry.getInstrumentation().getUiAutomation().injectInputEvent(up, true));
+        waitNative("android.webkit.WebView");
     }
 
     private void verifyNativeFiles(String bundle) throws Exception {
@@ -296,6 +341,7 @@ public class OfflineFlowTest {
             js("document.querySelector('button[value=restore]').click()");
             waitFor("document.body.innerText.includes('Backup restored and opened.')");
             open(bundle, "document.querySelector('#attachments')");
+            revealRecordDetails();
             assertTrue(js("document.body.innerText").contains(document));
             assertTrue(js("document.body.innerText").contains("2,500.10"));
             verifySelectedVisits(bundle);
@@ -382,7 +428,7 @@ public class OfflineFlowTest {
             ContentValues ready = new ContentValues();
             ready.put(MediaStore.Images.Media.IS_PENDING, 0);
             activity.getActivity().getContentResolver().update(image, ready, null, null);
-            open("/lookup", "document.querySelector('[data-scan-image]')");
+            open("/lookup", "document.querySelector('[data-scan-image]') && typeof window.srQRResult==='function'");
             if ("true".equals(InstrumentationRegistry.getArguments().getString("qrImageResultOnly"))) {
                 // Explicit diagnostic mode tests the result-handler boundary,
                 // not selection inside Android's separate document provider.
@@ -398,11 +444,15 @@ public class OfflineFlowTest {
             js("document.querySelector('form.entry-form').submit()");
             waitFor("location.pathname===" + JSONObject.quote(bundle));
             open("/lookup", "document.querySelector('[data-scan-camera]')");
+            // Granted-camera cancellation is distinct from the denial case.
+            InstrumentationRegistry.getInstrumentation().getUiAutomation().grantRuntimePermission(
+                activity.getActivity().getPackageName(),android.Manifest.permission.CAMERA);
             js("document.querySelector('[data-scan-camera]').click()");
             waitNative("org.sehatraasta.app.test:id/zxing_status_view");
-            InstrumentationRegistry.getInstrumentation().getUiAutomation().performGlobalAction(
-                    android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK);
-            waitFor("document.querySelector('[data-scan-status]').innerText.includes('cancelled')");
+            assertTrue(InstrumentationRegistry.getInstrumentation().getUiAutomation().performGlobalAction(
+                    android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK));
+            waitNative("android.webkit.WebView");
+            waitFor("(()=>{const s=document.querySelector('[data-qr-scanner]');return Boolean(s.dataset.cancelled)&&s.querySelector('[data-scan-status]').textContent===s.dataset.cancelled})()");
         } finally { activity.getActivity().getContentResolver().delete(image, null, null); }
     }
 
@@ -526,6 +576,7 @@ public class OfflineFlowTest {
         addRecord(bundle, "instructions", "category", "Follow-up", "language", "ENGLISH",
                 "date", "2026-09-27", "text", "Verification instruction");
         addRecord(bundle, "costs", "category", "TRAVEL", "amount", "2500.10", "date", "2026-09-27");
+        revealRecordDetails();
         assertTrue(js("document.body.innerText").contains("2,500.10"));
         // The mobile record groups are collapsed until opened by the reader.
         js("document.querySelectorAll('details.record-section').forEach(d=>d.open=true)");
@@ -535,17 +586,20 @@ public class OfflineFlowTest {
                 "department", "Orthopaedics", "referral_reason", "Verification reason", "follow_up_date", "2026-10-09");
         js("document.querySelector('form.entry-form').submit()");
         waitFor("location.pathname===" + JSONObject.quote(bundle));
+        revealRecordDetails();
         assertTrue(js("document.body.innerText").contains("Verification history"));
         open(bundle + "/reviews", "document.querySelector('[name=state]')");
         fill("category", "IMAGING_REPORTS", "state", "PENDING", "text", "Verification reviewer",
                 "time", "2026-09-27T10:00", "note", "Awaiting verification report");
         js("document.querySelector('form.entry-form').submit()");
         waitFor("location.pathname===" + JSONObject.quote(bundle));
+        revealRecordDetails();
         assertTrue(js("document.body.innerText").contains("Pending"));
         open(bundle + "?lang=ur", "document.documentElement.lang==='ur'");
         assertEquals("\"rtl\"", js("document.documentElement.dir"));
         open(bundle + "?lang=ps", "document.documentElement.lang==='ps'");
         open(bundle + "?lang=en", "document.documentElement.lang==='en'");
+        revealRecordDetails();
         assertTrue(js("document.body.innerText").contains("2,500.10"));
         open(bundle + "/print", "document.documentElement.dataset.reportReady==='yes'");
         assertEquals("true", js("Boolean(document.querySelector('img.qr'))"));
@@ -568,6 +622,7 @@ public class OfflineFlowTest {
         String patientName = saved.getString("patientName", null);
         assertNotNull("Run the create/restore test first", bundle);
         open(bundle, "document.querySelector('#attachments')");
+        revealRecordDetails();
         js("document.querySelectorAll('details.record-section').forEach(d=>d.open=true)");
         String page = stringValue("document.body.innerText");
         for (String value : new String[]{"Verification medicine", "Verification test", "Verification result",
@@ -579,7 +634,16 @@ public class OfflineFlowTest {
         js("document.querySelector('a[href^=\"/patients/\"][href*=\"/delete\"]').click()");
         waitFor("document.querySelector('[name=confirm]')");
         js("document.querySelector('[name=confirm]').checked=true;document.querySelector('form.entry-form').submit()");
-        waitFor("location.pathname==='/patients' && !document.body.innerText.includes(" + JSONObject.quote(patientName) + ")");
+        waitFor("location.pathname==='/removed' && document.body.innerText.includes(" + JSONObject.quote(patientName) + ")");
+        js("location.href='/patients'");
+        waitFor("!document.body.innerText.includes(" + JSONObject.quote(patientName) + ")");
+        // Retained originals reserve duplicate bytes and tokens. Confirm an
+        // intentional permanent removal of this isolated fixture before import.
+        open("/removed?lang=en", "document.querySelector('article')");
+        js("Array.from(document.querySelectorAll('article')).find(a=>a.innerText.includes(" + JSONObject.quote(patientName) + ")).querySelector('a[href*=permanent]').click()");
+        waitFor("document.querySelector('[name=confirm]')");
+        js("document.querySelector('[name=confirm]').checked=true;document.querySelector('form.entry-form').submit()");
+        waitFor("location.pathname==='/removed' && !Array.from(document.querySelectorAll('article')).some(a=>a.innerText.includes(" + JSONObject.quote(patientName) + "))");
         // Receive the separately saved referral without replacing any other record.
         open("/passports/import", "document.querySelector('[name=archive]')");
         tap("[name=archive]");
@@ -595,6 +659,7 @@ public class OfflineFlowTest {
         waitFor("/^\\/bundles\\/[^/]+$/.test(location.pathname)");
         String importedBundle = stringValue("location.pathname");
         assertNotEquals(bundle, importedBundle);
+        revealRecordDetails();
         js("document.querySelectorAll('details.record-section').forEach(d=>d.open=true)");
         for (String value : new String[]{"Verification history", "Verification medicine", "2,500.10", saved.getString("document", "")}) {
             assertTrue(stringValue("document.body.innerText").contains(value));
@@ -609,7 +674,8 @@ public class OfflineFlowTest {
         js("document.querySelector('a[href^=\"/patients/\"][href*=\"/delete\"]').click()");
         waitFor("document.querySelector('[name=confirm]')");
         js("document.querySelector('[name=confirm]').checked=true;document.querySelector('form.entry-form').submit()");
-        waitFor("location.pathname==='/patients' && !document.body.innerText.includes(" + JSONObject.quote(patientName) + ")");
+        waitFor("location.pathname==='/removed' && document.body.innerText.includes(" + JSONObject.quote(patientName) + ")");
+        open("/patients", "!document.body.innerText.includes(" + JSONObject.quote(patientName) + ")");
         // The WebView must not navigate the native bridge to an external origin.
         js("location.href='https://example.com/'");
         Thread.sleep(500);

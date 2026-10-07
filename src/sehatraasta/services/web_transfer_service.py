@@ -26,7 +26,8 @@ class WebTransferService:
             path = Path(folder) / (uuid4().hex + extension)
             path.write_bytes(content)
             return FileService(self.database).import_file(bundle_id, attachment_id, path,
-                category, day, provenance, synthetic=synthetic, original_name=uploaded.filename, **links)
+                category, day, provenance, synthetic=synthetic, original_name=uploaded.filename,
+                expected_visit=self.bundles.expected_visit, **links)
 
     def export(self, bundle_id):
         with TemporaryDirectory(prefix='sr-export-') as folder:

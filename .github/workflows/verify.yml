@@ -64,11 +64,16 @@ jobs:
             sleep 1
           done
           NODE_PATH="$RUNNER_TEMP/browser-tools/node_modules" node tests/manual/report_browser.cjs
+          NODE_PATH="$RUNNER_TEMP/browser-tools/node_modules" node tests/manual/repeated_use_browser.cjs
+          NODE_PATH="$RUNNER_TEMP/browser-tools/node_modules" node tests/manual/capture_browser.cjs
       - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: fictional-browser-evidence
-          path: tmp/report-browser/
+          path: |
+            tmp/report-browser/
+            tmp/repeated-browser/
+            tmp/resumed-browser/
           retention-days: 7
 
   android:
@@ -90,11 +95,21 @@ jobs:
       - run: sdkmanager 'platforms;android-36' 'build-tools;35.0.0' 'build-tools;36.0.0'
       - name: Build existing Android source
         run: SR_BUILD_PYTHON="$(command -v python)" bash android/gradlew -p android assembleRelease assembleDebugAndroidTest lintRelease --console=plain
+      - name: Preserve raw packaged audit and verify artifact-bound disposition
+        run: |
+          python -m pip install pip-audit==2.10.1
+          python tests/manual/packaged_security.py android/app/build/outputs/apk/release/app-release.apk tmp/packaged-security
       - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: android-lint
           path: android/app/build/reports/lint-results-release.*
+          retention-days: 7
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: packaged-security-evidence
+          path: tmp/packaged-security/
           retention-days: 7
 
   dependency-audit:

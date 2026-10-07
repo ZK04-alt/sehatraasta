@@ -67,17 +67,16 @@ class SQLiteRepository(PatientRepository):
                             supplied = (item.ID, bundle.ID, item.category, item.name, item.generated_stored_name, item.MIME_type, item.size, item.sha, item.date.isoformat() if item.date is not None else None, item.source)
                             if tuple(saved) != supplied:
                                 raise ValueError("stored attachment metadata cannot be edited directly")
-                next_order = connection.execute("SELECT COALESCE(MAX(order_id), 0) FROM investigation_orders").fetchone()[0]
-                next_instruction = connection.execute("SELECT COALESCE(MAX(instruction_id), 0) FROM instructions").fetchone()[0]
-                for bundle in patient.referrals:
-                    for item in bundle.investigation_orders:
-                        if getattr(item, "_storage_id", None) is None:
-                            next_order += 1
-                            item._storage_id = next_order
-                    for item in bundle.instructions:
-                        if getattr(item, "_storage_id", None) is None:
-                            next_instruction += 1
-                            item._storage_id = next_instruction
+                from sehatraasta.services.recovery_service import RecoveryService
+                for group,table,key in [('encounters','encounters','encounter_id'),('instructions','instructions','instruction_id'),
+                    ('investigation_orders','investigation_orders','order_id'),('category_reviews','category_reviews','review_id'),
+                    ('audit_events','audit_events','audit_event_id')]:
+                    maximum=RecoveryService.maximum_id(connection,table,key)
+                    for bundle in patient.referrals:
+                        for item in getattr(bundle,group):
+                            if getattr(item,'_storage_id',None) is None:
+                                maximum+=1
+                                item._storage_id=maximum
                 if adding:
                     connection.execute(
                         "INSERT INTO patients (patient_id, display_name, birth_year, language) VALUES (?, ?, ?, ?)",
@@ -125,8 +124,8 @@ class SQLiteRepository(PatientRepository):
         for item in bundle.encounters:
             item.checks()
             connection.execute(
-                "INSERT INTO encounters (bundle_id, date, facility, clinician_display_text, source_note) VALUES (?, ?, ?, ?, ?)",
-                (bundle.ID, item.date.isoformat(), item.facility, item.clinician_display_text, item.source_note),
+                "INSERT INTO encounters (encounter_id, bundle_id, date, facility, clinician_display_text, source_note) VALUES (?, ?, ?, ?, ?, ?)",
+                (item._storage_id, bundle.ID, item.date.isoformat(), item.facility, item.clinician_display_text, item.source_note),
             )
         for item in bundle.medication_item:
             item.checks()
@@ -166,14 +165,14 @@ class SQLiteRepository(PatientRepository):
         for item in bundle.category_reviews:
             item.checks()
             connection.execute(
-                "INSERT INTO category_reviews (bundle_id, category, presence_state, reviewer_text, reviewed_time, note) VALUES (?, ?, ?, ?, ?, ?)",
-                (bundle.ID, item.category.name, item.state.name, item.text, item.time.isoformat(), item.note),
+                "INSERT INTO category_reviews (review_id, bundle_id, category, presence_state, reviewer_text, reviewed_time, note) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (item._storage_id, bundle.ID, item.category.name, item.state.name, item.text, item.time.isoformat(), item.note),
             )
         for item in bundle.audit_events:
             item.checks()
             connection.execute(
-                "INSERT INTO audit_events (bundle_id, timestamp, action, entity_type, entity_id, actor_label, result) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (bundle.ID, item.time.isoformat(), item.action, item.audit_type, item.ID, item.actor_label, item.result),
+                "INSERT INTO audit_events (audit_event_id, bundle_id, timestamp, action, entity_type, entity_id, actor_label, result) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (item._storage_id, bundle.ID, item.time.isoformat(), item.action, item.audit_type, item.ID, item.actor_label, item.result),
             )
         order_ids = {}
         for item in bundle.investigation_orders:
@@ -227,6 +226,9 @@ class SQLiteRepository(PatientRepository):
                         item._storage_id = saved[0]
                     for item, saved in zip(bundle.investigation_orders, orders):
                         item._storage_id = saved[0]
+                    for group,table,key in [('encounters','encounters','encounter_id'),('category_reviews','category_reviews','review_id'),('audit_events','audit_events','audit_event_id')]:
+                        saved_rows=connection.execute('SELECT '+key+' FROM '+table+' WHERE bundle_id=? ORDER BY '+key,(bundle.ID,)).fetchall()
+                        for item,saved in zip(getattr(bundle,group),saved_rows): item._storage_id=saved[0]
                 patient._storage_revision = row["revision"]
                 patients.append(patient)
             return patients
@@ -236,7 +238,8 @@ class SQLiteRepository(PatientRepository):
         finally:
             connection.close()
 
-    def _read_bundle(self, connection, row):
+    @staticmethod
+    def _read_bundle(connection, row):
         bundle_id = row["bundle_id"]
         data = {
             "ID": bundle_id, "creation_time": row["creation_time"],

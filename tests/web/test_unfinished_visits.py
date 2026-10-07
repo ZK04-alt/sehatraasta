@@ -35,7 +35,9 @@ def test_destination_optional_and_progress_control_absent(app):
     patient = next(p for p in SQLiteRepository(app.config['DATABASE']).list_patients() if p.ID != 'PK-001')
     assert patient.referrals[0].destination == ''
     edit = response.location.split('?')[0] + '/edit'
-    response = client.post(edit, data={'csrf': csrf(client.get(edit)), 'source_facility': 'Demo hospital', 'destination': ''})
+    current = SQLiteRepository(app.config['DATABASE']).get_patient(patient.ID)
+    response = client.post(edit, data={'csrf': csrf(client.get(edit)), 'source_facility': 'Demo hospital', 'destination': '',
+        'patient_id':patient.ID, 'revision':current._storage_revision, 'medical_date_kind':'unknown', 'medical_date_value':''})
     assert response.status_code == 303
     assert patient.referrals[0].status.name == 'DRAFT'  # Existing storage format remains compatible.
 
@@ -174,9 +176,13 @@ def test_old_backups_restore_into_new_schema(app, tmp_path, version):
         document = json.loads(archive.read('dataset.json'))
     tables = document['tables']
     tables.pop('visit_drafts'); tables.pop('visit_draft_fields')
+    tables.pop('removed_items')
     if version == 2:
         tables.pop('referral_context')
     tables['schema_version'] = [item for item in tables['schema_version'] if item['version'] <= version]
+    document['version'] = 2
+    for visit in tables['referral_bundles']:
+        visit.pop('medical_date_kind'); visit.pop('medical_date_value')
     content = json.dumps(document).encode()
     legacy = tmp_path / 'legacy.zip'
     with ZipFile(legacy, 'w', ZIP_DEFLATED) as archive:

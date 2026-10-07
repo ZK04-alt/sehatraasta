@@ -16,6 +16,7 @@ from .dataset_backup import DatasetBackupService, TABLES, encoded, read_tables, 
 from .file_service import FileService
 from .identifiers import IDAllocator
 from .qr_service import QRService
+from .archive_reader import read_checked_members
 
 # Leave room for multipart headers within the existing 55 MiB HTTP limit.
 MAX_BYTES = 50 * 1024 * 1024
@@ -48,11 +49,11 @@ class PassportService:
                 owner = connection.execute('SELECT patient_id FROM referral_bundles WHERE bundle_id=?', (bundle_id,)).fetchone()
                 if owner is None:
                     raise ValueError('bundle not found')
-                tables = {name: [] if name in ('visit_drafts', 'visit_draft_fields') else rows if name == 'schema_version' else
+                tables = {name: [] if name in ('visit_drafts', 'visit_draft_fields', 'removed_items') else rows if name == 'schema_version' else
                     [row for row in rows if row['patient_id'] == owner[0]] if name == 'patients' else
                     [row for row in rows if row['bundle_id'] == bundle_id]
                     for name, rows in all_tables.items()}
-                members = {'passport.json': encoded({'format': 'sehatraasta-passport', 'version': 2, 'tables': tables})}
+                members = {'passport.json': encoded({'format': 'sehatraasta-passport', 'version': 3, 'tables': tables})}
                 files = FileService(self.database)
                 for row in tables['managed_attachments']:
                     with files._path(row['stored_name']).open('rb') as stream:
@@ -94,24 +95,29 @@ class PassportService:
                         if not item.filename.startswith('attachments/'):
                             raise ValueError()
                         FileService(self.database)._path(item.filename[12:])
-                members = {name: archive.read(name) for name in names}
+                members = read_checked_members(archive,infos,MAX_BYTES)
             manifest = json.loads(members.pop('manifest.json'))
             if not isinstance(manifest, dict) or set(manifest) != set(members):
                 raise ValueError()
             if any(hashlib.sha256(data).hexdigest() != manifest[name] for name, data in members.items()):
                 raise ValueError()
             document = json.loads(members.pop('passport.json'))
-            if document['format'] != 'sehatraasta-passport' or type(document['version']) is not int or document['version'] not in (1, 2):
+            if document['format'] != 'sehatraasta-passport' or type(document['version']) is not int or document['version'] not in (1, 2, 3):
                 raise ValueError()
             tables = document['tables']
+            versions = [row['version'] for row in tables['schema_version']]
+            if any(type(version) is not int for version in versions) or versions!=list(range(1,len(versions)+1)):
+                raise ValueError()
+            if (document['version']==1 and versions not in ([1,2,3],[1,2,3,4])) or (document['version']==2 and versions!=[1,2,3,4,5]) or (document['version']==3 and versions!=[1,2,3,4,5,6]):
+                raise ValueError()
             # Earlier passports predate unfinished visit storage. They contain only completed records.
-            if set(tables) == set(TABLES) - {'visit_drafts', 'visit_draft_fields'}:
+            if set(tables) == set(TABLES) - {'visit_drafts', 'visit_draft_fields', 'removed_items'}:
                 tables['visit_drafts'] = []
                 tables['visit_draft_fields'] = []
                 tables['schema_version'].append({'version': 4, 'applied_at': 'legacy passport migration'})
-            if set(tables) != set(TABLES) or len(tables['patients']) != 1 or len(tables['referral_bundles']) != 1 or len(tables['bundle_tokens']) != 1:
+            if set(tables) not in (set(TABLES), set(TABLES)-{'removed_items'}) or len(tables['patients']) != 1 or len(tables['referral_bundles']) != 1 or len(tables['bundle_tokens']) != 1:
                 raise ValueError()
-            if tables['visit_drafts'] or tables['visit_draft_fields']:
+            if tables['visit_drafts'] or tables['visit_draft_fields'] or tables.get('removed_items'):
                 raise ValueError()  # Unfinished entries are never shared in a single-visit passport.
             tables = migrate_legacy_tables(tables)
             with TemporaryDirectory(prefix='sr-passport-check-') as name:
@@ -140,13 +146,16 @@ class PassportService:
                 connection.execute('BEGIN IMMEDIATE')
                 connection.execute('PRAGMA defer_foreign_keys=ON')
                 token = tables['bundle_tokens'][0]['token']
-                if connection.execute('SELECT 1 FROM bundle_tokens WHERE token=?', (token,)).fetchone():
+                from .recovery_service import RecoveryService
+                retained_tokens={row['token'] for removed in connection.execute('SELECT snapshot FROM removed_items')
+                    for snapshot in RecoveryService.snapshots(connection,removed[0]) for row in snapshot['tables'].get('bundle_tokens',[])}
+                if connection.execute('SELECT 1 FROM bundle_tokens WHERE token=?', (token,)).fetchone() or token in retained_tokens:
                     raise ValueError('passport already imported')
                 maps = {}
                 for table, (column, kind) in TEXT_IDS.items():
                     maps[column] = {row[column]: allocator.allocate(kind) for row in tables[table]}
                 for table, column in INT_IDS.items():
-                    maximum = connection.execute('SELECT COALESCE(MAX("' + column + '"),0) FROM "' + table + '"').fetchone()[0]
+                    maximum = RecoveryService.maximum_id(connection,table,column)
                     maps[column] = {row[column]: maximum + index + 1 for index, row in enumerate(tables[table])}
                 maps['investigation_order_id'] = maps['order_id']
                 for table in INSERT_ORDER:
@@ -159,8 +168,7 @@ class PassportService:
                         if table == 'attachments' and row['generated_stored_name']:
                             row['generated_stored_name'] = ''  # Replaced with the generated import name below.
                 for managed in tables['managed_attachments']:
-                    if connection.execute('SELECT 1 FROM managed_attachments WHERE sha256=?', (managed['sha256'],)).fetchone():
-                        raise ValueError('document already stored')
+                    files.check_duplicate(connection,managed['sha256'])
                     old_name = managed['stored_name']
                     managed['stored_name'] = uuid4().hex + Path(old_name).suffix
                     attachment = next(row for row in tables['attachments'] if row['attachment_id'] == managed['attachment_id'])
@@ -179,8 +187,8 @@ class PassportService:
                     for row in tables[table]:
                         connection.execute(sql, [row[col] for col in columns])
                 bundle_id = tables['referral_bundles'][0]['bundle_id']
-                connection.execute("INSERT INTO audit_events(bundle_id,timestamp,action,entity_type,entity_id,actor_label,result) VALUES (?,?,'import passport','referral',?,'device user','success')",
-                    (bundle_id, datetime.now(timezone.utc).isoformat(), bundle_id))
+                connection.execute("INSERT INTO audit_events(audit_event_id,bundle_id,timestamp,action,entity_type,entity_id,actor_label,result) VALUES (?,?,?,'import passport','referral',?,'device user','success')",
+                    (RecoveryService.maximum_id(connection,'audit_events','audit_event_id')+1,bundle_id, datetime.now(timezone.utc).isoformat(), bundle_id))
                 check_database(connection)
             return bundle_id
         except Exception:

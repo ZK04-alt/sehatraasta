@@ -82,9 +82,14 @@ def capture_page(get_service, consume, location):
             flash('status.saved')
             return redirect(location('bundle', bundle_id=identifier), code=303)
         except (ValueError, OverflowError) as error:
-            code = ('error.date' if error_field == 'medical_date_value' else
+            problem=str(error)
+            code = ('capture.removed_duplicate' if 'duplicate' in problem and 'Removed items' in problem else
+                    'capture.duplicate' if 'duplicate' in problem else
+                    'capture.file_large' if problem=='file too large' else
+                    'capture.file_type' if error_field=='file' and ('extension' in problem or 'filename' in problem or 'file header' in problem) else
+                    'error.date' if error_field == 'medical_date_value' else
                     'error.required' if str(error).startswith('required') else 'error.invalid')
-            errors, status = [{'field': error_field, 'code': code}], 422
+            errors, status = [{'field': error_field, 'code': code}], 409 if 'duplicate' in problem else 422
         except (StorageError, OSError) as error:
             log_storage_error(current_app.config['DATABASE'], 'capture', error)
             errors, status = [{'field': 'capture-form', 'code': 'error.unavailable'}], 503

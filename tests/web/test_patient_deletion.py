@@ -55,6 +55,10 @@ def test_removes_all_owned_records_files_and_tokens_only(app, client):
     assert service.get_patient('PK-002') == other
     files = FileService(app.config['DATABASE'])
     assert files.retrieve(service.get_bundle('RB-003').attachments[0].ID)[0] == b'%PDF-1.4other'
+    from sehatraasta.services.recovery_service import RecoveryService
+    recovery = RecoveryService(app.config['DATABASE'])
+    assert len(list(files.root.iterdir())) == 3  # ordinary removal retains owned originals
+    assert recovery.permanent(recovery.list()[0]['item_id']) == 0
     assert len(list(files.root.iterdir())) == 1
     with connect_database(app.config['DATABASE']) as connection:
         assert connection.execute('PRAGMA foreign_key_check').fetchall() == []

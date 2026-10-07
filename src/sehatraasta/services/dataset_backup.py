@@ -18,6 +18,7 @@ from sehatraasta.domain import AttachmentCategory, Provenance, ProvenanceType
 from .qr_service import make_payload
 from .attachment_validation import validate_attachment_signature, validate_attachment_size
 from .file_service import FileService
+from .archive_reader import read_checked_members
 
 
 TABLES = (
@@ -25,7 +26,7 @@ TABLES = (
     "instructions", "attachments", "investigation_orders", "diagnostic_results",
     "imaging_items", "cost_entries", "category_reviews", "audit_events",
     "managed_attachments", "file_audit_events", "bundle_tokens",
-    "referral_context", "visit_drafts", "visit_draft_fields",
+    "referral_context", "visit_drafts", "visit_draft_fields", "removed_items",
 )
 MAX_BYTES = 100 * 1024 * 1024
 
@@ -49,7 +50,13 @@ def migrate_legacy_tables(tables):
             row['medical_date_kind'] = 'unknown'
             row['medical_date_value'] = None
         tables['schema_version'].append({'version': 5, 'applied_at': 'legacy archive migration'})
-    elif versions != [1, 2, 3, 4, 5]:
+        versions.append(5)
+    if versions == [1, 2, 3, 4, 5]:
+        if 'removed_items' in tables:
+            raise ValueError('legacy archive has inconsistent recovery table')
+        tables['removed_items'] = []
+        tables['schema_version'].append({'version': 6, 'applied_at': 'legacy archive migration'})
+    elif versions != [1, 2, 3, 4, 5, 6]:
         raise ValueError('unsupported archive schema version')
     return tables
 
@@ -58,7 +65,16 @@ def check_files(database, members):
     service = FileService(database)
     connection = connect_database(database, read_only=True)
     try:
-        rows = connection.execute("SELECT a.*, m.stored_name, m.sha256 AS managed_sha, m.category AS managed_category, m.source_type, m.source_identifier FROM managed_attachments m JOIN attachments a USING(attachment_id)").fetchall()
+        rows = [dict(row) for row in connection.execute("SELECT a.*, m.stored_name, m.sha256 AS managed_sha, m.category AS managed_category, m.source_type, m.source_identifier FROM managed_attachments m JOIN attachments a USING(attachment_id)")]
+        from .recovery_service import RecoveryService
+        for removed in connection.execute('SELECT * FROM removed_items'):
+            RecoveryService.validate_item(connection,removed)
+            for snapshot in RecoveryService.snapshots(connection, removed['snapshot']):
+                tables = snapshot['tables']
+                for managed in tables.get('managed_attachments', []):
+                    original = next(item for item in tables.get('attachments', []) if item['attachment_id'] == managed['attachment_id'])
+                    rows.append({**original, 'stored_name':managed['stored_name'], 'managed_sha':managed['sha256'],
+                        'managed_category':managed['category'], 'source_type':managed['source_type'], 'source_identifier':managed['source_identifier']})
         if connection.execute("SELECT 1 FROM attachments WHERE generated_stored_name != '' AND attachment_id NOT IN (SELECT attachment_id FROM managed_attachments)").fetchone():
             raise ValueError("unmanaged attachment file reference")
         for token in connection.execute("SELECT token FROM bundle_tokens"):
@@ -101,9 +117,10 @@ class DatasetBackupService:
                 connection.execute("BEGIN IMMEDIATE")
                 check_database(connection)
                 tables = read_tables(connection)
-                members = {"dataset.json": encoded({"format": "sehatraasta-backup", "version": 3, "synthetic_only": True, "tables": tables})}
+                members = {"dataset.json": encoded({"format": "sehatraasta-backup", "version": 4, "synthetic_only": True, "tables": tables})}
                 service = FileService(self.database)
-                for row in tables["managed_attachments"]:
+                from .recovery_service import RecoveryService
+                for row in tables["managed_attachments"] + RecoveryService.retained_files(connection):
                     with service._path(row["stored_name"]).open("rb") as stream:
                         members["attachments/" + row["stored_name"]] = stream.read(5242881)
                 if sum(len(value) for value in members.values()) > MAX_BYTES or len(members) > 999:
@@ -142,7 +159,7 @@ class DatasetBackupService:
                         FileService(self.database)._path(item.filename[len("attachments/"):])
                     if item.is_dir() or (item.external_attr >> 16) & 0o170000 == 0o120000:
                         raise ValueError()
-                members = {name: archive.read(name) for name in names}
+                members = read_checked_members(archive,infos,MAX_BYTES)
             manifest = json.loads(members.pop("manifest.json"))
             if not isinstance(manifest, dict) or set(manifest) != set(members):
                 raise ValueError()
@@ -150,11 +167,16 @@ class DatasetBackupService:
                 if hashlib.sha256(content).hexdigest() != manifest[name]:
                     raise ValueError()
             document = json.loads(members.pop("dataset.json"))
-            old_tables = set(TABLES) - {'referral_context', 'visit_drafts', 'visit_draft_fields'}
-            previous_tables = set(TABLES) - {'visit_drafts', 'visit_draft_fields'}
-            if type(document["version"]) is not int or document["version"] not in (2, 3) or document["synthetic_only"] is not True or set(document["tables"]) not in (old_tables, previous_tables, set(TABLES)):
+            old_tables = set(TABLES) - {'referral_context', 'visit_drafts', 'visit_draft_fields', 'removed_items'}
+            previous_tables = set(TABLES) - {'visit_drafts', 'visit_draft_fields', 'removed_items'}
+            if type(document["version"]) is not int or document["version"] not in (2, 3, 4) or document["synthetic_only"] is not True or set(document["tables"]) not in (old_tables, previous_tables, set(TABLES)-{'removed_items'}, set(TABLES)):
                 raise ValueError()
-            if document['version'] == 3 and document.get('format') != 'sehatraasta-backup':
+            if document['version'] in (3, 4) and document.get('format') != 'sehatraasta-backup':
+                raise ValueError()
+            versions = [row['version'] for row in document['tables']['schema_version']]
+            if any(type(version) is not int for version in versions) or versions != list(range(1,len(versions)+1)):
+                raise ValueError()
+            if (document['version']==2 and versions not in ([1,2],[1,2,3],[1,2,3,4])) or (document['version']==3 and versions!=[1,2,3,4,5]) or (document['version']==4 and versions!=[1,2,3,4,5,6]):
                 raise ValueError()
             if 'referral_context' not in document['tables']:
                 document['tables']['referral_context'] = []

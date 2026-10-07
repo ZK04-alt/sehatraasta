@@ -97,6 +97,18 @@ class UnfinishedVisitService:
         finally:
             connection.close()
 
+    def discard(self,draft_id,revision):
+        connection=connect_database(self.database)
+        try:
+            with connection:
+                connection.execute('BEGIN IMMEDIATE')
+                removed=connection.execute('DELETE FROM visit_drafts WHERE draft_id=? AND revision=?',(draft_id,revision))
+                if removed.rowcount!=1: raise ValueError('unfinished visit changed; reopen before discarding')
+        except sqlite3.Error as error:
+            log_storage_error(self.database,'discard_unfinished',error)
+            raise StorageError('could not discard unfinished visit') from None
+        finally: connection.close()
+
     def list(self):
         connection = connect_database(self.database, read_only=True)
         try:

@@ -31,8 +31,8 @@
 <select id="{{ control_id }}" name="{{ field.name }}" {{ 'required' if required else '' }} {% if error %}aria-invalid="true" aria-describedby="{{ control_id }}-error"{% elif field.hint %}aria-describedby="{{ control_id }}-hint"{% endif %}>
 <option value="">{{ t('field.choose') }}</option>
 {% if values.get(field.name) and values.get(field.name) not in field.choices|map(attribute=0)|list %}<option value="{{ values.get(field.name) }}" selected>{{ values.get(field.name) }}</option>{% endif %}
-{% for value, label in field.choices %}{% set state_label=t('state.'+value.lower()) %}
-<option value="{{ value }}" {{ 'selected' if values.get(field.name)==value else '' }}>{{ label if state_label.startswith('[Missing') else state_label }}</option>{% endfor %}
+{% for value, label in field.choices %}{% set state_label=t('state.'+value.lower().replace(' ','_')) %}
+<option value="{{ value }}" {{ 'selected' if values.get(field.name)==value else '' }}>{{ t(label) if label.startswith('date.') else label if state_label.startswith('[Missing') else state_label }}</option>{% endfor %}
 </select>
 {% elif field.kind == 'textarea' %}
 <textarea id="{{ control_id }}" name="{{ field.name }}" rows="3" dir="auto" {{ 'required' if required else '' }} {% if error %}aria-invalid="true" aria-describedby="{{ control_id }}-error"{% elif field.hint %}aria-describedby="{{ control_id }}-hint"{% endif %}>{{ values.get(field.name, '') }}</textarea>

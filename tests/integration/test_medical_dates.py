@@ -67,7 +67,7 @@ def test_new_archives_have_explicit_versions_and_keep_uncertain_date(tmp_path):
     service.repository.save_patient(patient)
     passport = PassportService(path).export('RB-001')
     with ZipFile(BytesIO(passport)) as archive:
-        assert json.loads(archive.read('passport.json'))['version'] == 2
+        assert json.loads(archive.read('passport.json'))['version'] == 3
     receiver = tmp_path / 'receiver.sqlite'
     SQLiteRepository(receiver)
     imported = PassportService(receiver).import_passport(passport, confirmed=True)
@@ -77,7 +77,7 @@ def test_new_archives_have_explicit_versions_and_keep_uncertain_date(tmp_path):
     name = backup.create(tmp_path / 'exports')
     with ZipFile(tmp_path / 'exports' / name) as archive:
         document = json.loads(archive.read('dataset.json'))
-        assert document['version'] == 3
+        assert document['version'] == 4
         assert document['format'] == 'sehatraasta-backup'
     backup.restore(tmp_path / 'exports' / name, tmp_path / 'restore', confirmed=True)
     visit = BundleService(SQLiteRepository(tmp_path / 'restore/sehatraasta.sqlite')).get_bundle('RB-001')

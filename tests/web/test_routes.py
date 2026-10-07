@@ -33,7 +33,10 @@ def token(client, path):
 
 
 def post(client, path, data):
-    return client.post(path, data={'csrf': token(client, path), **data})
+    page = client.get(path)
+    csrf = re.search(r'name="csrf" value="([^"]+)"',page.text)[1]
+    revision = re.search(r'name="revision" value="([^"]+)"',page.text)
+    return client.post(path, data={'csrf':csrf, **({'revision':revision[1]} if revision else {}), **data})
 
 
 PAGES = ['/', '/bundles', '/patients', '/patients/PK-001', '/patients/new', '/bundles/new',
@@ -262,7 +265,8 @@ def test_empty_database_starts_without_fake_records(tmp_path):
 
 def test_edit_preserves_original_source_and_exact_cost(client, app):
     assert post(client, '/bundles/SR-DEMO-001/costs/new', RECORDS[-1][1]).status_code == 303
-    response = post(client, '/bundles/SR-DEMO-001/edit', dict(source_facility='اصل متن', destination='Demo new destination', status='READY_FOR_REVIEW'))
+    response = post(client, '/bundles/SR-DEMO-001/edit', dict(source_facility='اصل متن', destination='Demo new destination',
+        patient_id='PK-001', medical_date_kind='unknown', medical_date_value='',revision=app.extensions['bundles'].get_patient('PK-001')._storage_revision))
     assert response.status_code == 303
     item = app.extensions['bundles'].get_bundle('SR-DEMO-001')
     assert item.source_facility == 'اصل متن' and item.destination == 'Demo new destination'
@@ -295,7 +299,7 @@ def test_missing_attachment_is_audited_and_delete_needs_confirmation(client, app
     attachment_path = '/attachments/' + attachment_id
     page = client.get(attachment_path + '/delete')
     assert page.status_code == 200 and b'fictional.pdf' in page.data
-    assert attachment_id.encode() not in page.data
+    assert attachment_id not in re.sub('<[^>]+>', '',page.text)  # opaque IDs may appear only in machine links
     assert post(client, attachment_path + '/delete', {}).status_code == 422
     assert post(client, attachment_path + '/delete', {'confirm': 'no'}).status_code == 422
     root = app.config['DATABASE'].parent / 'attachments'

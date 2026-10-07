@@ -1,0 +1,10 @@
+{% extends 'base.html' %}{% block content %}
+{% if patient is defined %}<p><strong><bdi dir="auto">{{ patient.name }}</bdi></strong>{% if patient.birth_year %} · {{ patient.birth_year }}{% endif %}{% if visit %} · <bdi dir="auto">{{ medical_date_label(visit) }}</bdi>{% endif %}</p>{% endif %}
+<p><strong><bdi dir="auto">{{ label }}</bdi></strong></p>
+{% if context %}<p><bdi dir="auto">{{ context }}</bdi></p>{% endif %}
+<p>{{ t('recovery.'+action+'_help') }}</p>
+{% if error %}<p class="error-summary" role="alert" tabindex="-1" id="errors">{{ t(error) }}</p>{% endif %}
+<form method="post" class="entry-form"><input type="hidden" name="csrf" value="{{ form_token() }}"><input type="hidden" name="lang" value="{{ lang }}">{% if revision is defined %}<input type="hidden" name="revision" value="{{ revision }}">{% endif %}
+<label><input type="checkbox" name="confirm" value="yes" required>{{ t('recovery.confirm') }}</label>
+<div class="form-actions"><button>{{ t('recovery.'+action) }}</button><a href="{{ back }}">{{ t('action.cancel') }}</a></div></form>
+{% endblock %}

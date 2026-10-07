@@ -36,6 +36,13 @@ def read_source(path):
 
 
 class FileService:
+    @staticmethod
+    def check_duplicate(connection,digest,exclude=None):
+        if connection.execute('SELECT 1 FROM attachments WHERE sha256=? AND attachment_id!=?',(digest,exclude or '')).fetchone():
+            raise ValueError('duplicate attachment content; open the saved paper')
+        from .recovery_service import RecoveryService
+        if any(row['sha256']==digest for row in RecoveryService.retained_files(connection)):
+            raise ValueError('duplicate attachment content in Removed items; restore it or permanently delete it first')
     def __init__(self, database):
         self.database = Path(database)
         self.root = self.database.parent / "attachments"
@@ -54,12 +61,16 @@ class FileService:
     def import_file(self, bundle_id, attachment_id, source_path, category,
                     attachment_date, provenance, synthetic=False, order_id=None,
                     result_id=None, imaging_id=None, instruction_id=None,
-                    medication_list=False, original_name=None):
+                    medication_list=False, original_name=None, expected_visit=None):
         connection = connect_database(self.database)
         created = None
         try:
             with connection:
                 connection.execute('BEGIN IMMEDIATE')
+                if expected_visit is not None:
+                    row=connection.execute('SELECT b.bundle_id,p.patient_id,p.revision FROM referral_bundles b JOIN patients p USING(patient_id) WHERE b.bundle_id=?',(bundle_id,)).fetchone()
+                    if row is None or list(row)!=expected_visit:
+                        raise ValueError('patient or visit changed; reopen before saving')
                 created = self.import_in_transaction(connection, bundle_id, attachment_id,
                     source_path, category, attachment_date, provenance, order_id=order_id,
                     result_id=result_id, imaging_id=imaging_id, instruction_id=instruction_id,
@@ -112,8 +123,7 @@ class FileService:
             stored_name = generate_attachment_stored_name(extension)
             if connection.execute("SELECT 1 FROM referral_bundles WHERE bundle_id = ?", (bundle_id,)).fetchone() is None:
                 raise ValueError("bundle not found")
-            if connection.execute("SELECT 1 FROM attachments WHERE sha256 = ?", (digest,)).fetchone():
-                raise ValueError("duplicate attachment content")
+            self.check_duplicate(connection,digest)
             connection.execute(
                 "INSERT INTO attachments VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (attachment_id, bundle_id, category.value, name, stored_name, mime,
@@ -214,6 +224,8 @@ class FileService:
                 connection.execute("BEGIN IMMEDIATE")
                 rows = connection.execute("SELECT * FROM managed_attachments").fetchall()
                 referenced = {row["stored_name"] for row in rows}
+                from .recovery_service import RecoveryService
+                referenced.update(item['stored_name'] for item in RecoveryService.retained_files(connection))
                 self._path("0" * 32 + ".pdf")
                 if self.root.exists():
                     for path in self.root.iterdir():
