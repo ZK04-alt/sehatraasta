@@ -2,6 +2,10 @@
 
 SehatRaasta organizes a family's patients, visits and original documents locally in English, Urdu and Pashto. Save a paper first, then add historical medicines, tests, instructions and costs when useful. Patient name and one supported original are enough for a new paper; birth year, facility and medical date are optional. Dates can be exact, approximate or unknown. Printable summaries, local QR lookup, visit passports and whole-dataset backups remain available.
 
+## Download for Android
+
+[Download SehatRaasta 1.6.0](https://github.com/ZK04-alt/sehatraasta/releases/download/v1.6.0/SehatRaasta-1.6.0.apk) or open the [app website](https://zk04-alt.github.io/sehatraasta/) for installation instructions and privacy information.
+
 ## Run on a computer
 
 Python 3.12 or later is required. In Git Bash on Windows:
@@ -33,9 +37,10 @@ SehatRaasta organizes information as entered. It does not diagnose, interpret re
 
 ## Verification
 
+The resumed remediation report, evidence and release limits are in [RELEASE_REMEDIATION_REPORT.md](docs/RELEASE_REMEDIATION_REPORT.md) and [RELEASE_GATE_REMEDIATION.md](docs/RELEASE_GATE_REMEDIATION.md). The whole-product gate remains FAIL for the stated missing human/language/privacy/supported-device evidence; successful fictional automation does not authorize real-patient use. A planned [human tryout](docs/HUMAN_TRYOUT_SCRIPT.md) is included.
 
 ```bash
 python -m pytest -q
 ```
 
-Tests use isolated temporary datasets. `learning-labs/` and the phase documents contain historical learning exercises and do not describe the current application interface.
+Tests use isolated temporary datasets. The notes in [`learning/`](learning/README.md) were kept for Zunair Ali Khan to learn. They are personal study material, separate from the application and its release evidence.

@@ -1,3 +1,5 @@
+> Personal learning notes kept for Zunair Ali Khan to learn. These are separate from the app and its release evidence.
+
 Resources:
 
 1. [W3C — Structural markup and right-to-left text](https://www.w3.org/International/questions/qa-html-dir)

@@ -1,3 +1,5 @@
+> Personal learning notes kept for Zunair Ali Khan to learn. These are separate from the app and its release evidence.
+
 Scenario: A student tries to borrow an unavailable book
 
 Given a fictional student exists

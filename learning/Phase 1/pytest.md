@@ -1,3 +1,5 @@
+> Personal learning notes kept for Zunair Ali Khan to learn. These are separate from the app and its release evidence.
+
 # Unit Tests
 
 **Unit testing** means writing code that tests individual parts of your program, usually functions.

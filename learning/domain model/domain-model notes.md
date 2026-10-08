@@ -1,3 +1,5 @@
+> Personal learning notes kept for Zunair Ali Khan to learn. These are separate from the app and its release evidence.
+
 Resources:
 
 1. [Entity Relationship Diagram (ERD) Tutorial - Part 1](https://www.youtube.com/watch?v=xsg9BDiwiJE)

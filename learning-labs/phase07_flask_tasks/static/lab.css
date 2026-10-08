@@ -1,3 +1,0 @@
-body { font: 1rem/1.6 Arial, sans-serif; background: #f1f0e9; color: #182d3c; max-inline-size: 42rem; margin: auto; padding: 1rem; }
-label { display: block; } input, button { font: inherit; padding: .65rem; max-inline-size: 100%; box-sizing: border-box; }
-:focus-visible { outline: 3px solid #175a59; outline-offset: 3px; }

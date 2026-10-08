@@ -1,3 +1,5 @@
+> Personal learning notes kept for Zunair Ali Khan to learn. These are separate from the app and its release evidence.
+
 Resources:
 
 1. [Flask application factory](https://flask.palletsprojects.com/en/stable/tutorial/factory/)

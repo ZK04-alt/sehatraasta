@@ -1,3 +1,5 @@
+> Personal learning notes kept for Zunair Ali Khan to learn. These are separate from the app and its release evidence.
+
 Resources:
 
 1. [CS50P - Lecture 6 - File I/O](https://www.youtube.com/watch?v=KD-Yoel6EVQ&t=354s)

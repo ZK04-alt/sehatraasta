@@ -1,3 +1,5 @@
+> Personal learning notes kept for Zunair Ali Khan to learn. These are separate from the app and its release evidence.
+
 # Phase 5 learning notes: print summaries, QR codes, costs, and backups
 
 Prepared: 12 September 2026

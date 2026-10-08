@@ -1,3 +1,5 @@
+> Personal learning notes kept for Zunair Ali Khan to learn. These are separate from the app and its release evidence.
+
 # Modules, Data Classes, Enums, Exceptions & Testing
 
 ## Modules
