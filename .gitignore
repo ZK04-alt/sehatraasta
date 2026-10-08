@@ -56,3 +56,6 @@ tmp/
 android/app/build/
 *.pyc
 output/
+
+# Documentation retained locally, not part of the public repository.
+/docs/

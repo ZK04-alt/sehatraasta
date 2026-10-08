@@ -37,7 +37,7 @@ SehatRaasta organizes information as entered. It does not diagnose, interpret re
 
 ## Verification
 
-The resumed remediation report, evidence and release limits are in [RELEASE_REMEDIATION_REPORT.md](docs/RELEASE_REMEDIATION_REPORT.md) and [RELEASE_GATE_REMEDIATION.md](docs/RELEASE_GATE_REMEDIATION.md). The whole-product gate remains FAIL for the stated missing human/language/privacy/supported-device evidence; successful fictional automation does not authorize real-patient use. A planned [human tryout](docs/HUMAN_TRYOUT_SCRIPT.md) is included.
+The whole-product gate remains FAIL for the stated missing human/language/privacy/supported-device evidence; successful fictional automation does not authorize real-patient use. Verification reports and evaluation plans are retained locally, outside the public repository.
 
 ```bash
 python -m pytest -q

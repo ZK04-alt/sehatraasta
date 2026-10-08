@@ -10,9 +10,8 @@ on continuation and document pages. **Patients → patient → Choose visits for
 include uploaded reports/photos, preview, then print or save. Blank fields are
 omitted; costs are optional. **Remove visit** keeps the patient's other visits.
 **Menu → How sharing works** explains PDFs, QR and passport transfer.
-See `docs/testing/paper-and-play-release-2026-10-05.md` for current checks and limits.
-Google Play preparation and remaining requirements are in
-`docs/release/google-play-2026-10-05.md`. Nothing has been uploaded or published.
+Verification reports and Google Play preparation notes are retained locally.
+Google Play distribution requires a protected upload key and the normal store review process; the local APK is not a Play release.
 
 Copy `output/android/SehatRaasta.apk` from the repository to a 64-bit Android phone running Android 7 or later. Open the APK and allow installation from that file source when Android asks. Open **SehatRaasta** from the launcher. A recent Android System WebView is recommended.
 
@@ -34,8 +33,8 @@ The APK is `app/build/outputs/apk/release/app-release.apk`. It includes ARM64 ph
 
 The separate `play` build type never falls back to the debug key. Without upload-key
 configuration, `./gradlew bundlePlay` produces an unsigned preparation bundle.
-With the four private upload-key environment variables documented in the release
-checklist, `scripts/build_play_release.ps1` (PowerShell only) builds a signed bundle.
+With `SR_UPLOAD_KEYSTORE`, `SR_UPLOAD_STORE_PASSWORD`, `SR_UPLOAD_KEY_ALIAS` and
+`SR_UPLOAD_KEY_PASSWORD` configured privately, `scripts/build_play_release.ps1` (PowerShell only) builds a signed bundle.
 Do not put key passwords in this repository or in chat.
 
 ## Design and permissions
@@ -52,7 +51,7 @@ The print view includes a QR at the top. **Local lookup** supports camera scanni
 
 To use a referral on another phone, open **Take this referral to another device**, confirm permission and save its ZIP. Transfer that file through an approved offline method. On the other phone choose **Receive a referral**, check the patient, reselect the same file and choose **Add this referral**. This adds a separate patient copy without overwriting existing records. The original printed QR then opens that copy. Repeated import of the same QR is rejected. This is not automatic synchronisation.
 
-The single-referral transfer limit is 50 MiB of expanded data, with the existing 5 MiB per-document limit. ZIPs, PDFs and backups are not encrypted by the app. Keep exported copies protected and remove them separately when no longer needed. See `docs/pilot/README.md` for fictional clinic-session materials and unresolved real-data safeguards.
+The single-referral transfer limit is 50 MiB of expanded data, with the existing 5 MiB per-document limit. ZIPs, PDFs and backups are not encrypted by the app. Keep exported copies protected and remove them separately when no longer needed. Use fictional records for testing; clinical and real-patient readiness require separate review.
 
 ## Check
 

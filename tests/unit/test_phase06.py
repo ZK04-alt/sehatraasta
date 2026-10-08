@@ -37,7 +37,7 @@ def test_missing_key_visible_and_empty_translation_fails(monkeypatch):
 
 
 def test_contract_message_keys_exist():
-    contract = (ROOT / 'docs/decisions/ui-contract.md').read_text(encoding='utf-8')
+    contract = (ROOT / 'tests/fixtures/ui-contract.md').read_text(encoding='utf-8')
     for key in re.findall(r'`((?:page|action|error|warning|status|state)\.[a-z_]+)`', contract):
         assert key in catalogs.load_catalog('en'), key
 
