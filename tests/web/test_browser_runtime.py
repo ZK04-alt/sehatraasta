@@ -170,3 +170,14 @@ def test_browser_runtime_never_uses_native_form_submission(runtime):
     assert "form-action 'none'" in headers['Content-Security-Policy']
     assert b'/sehatraasta/iphone/bridge.js' in result['body']
     assert b'browser-app' in result['body']
+
+
+def test_browser_runtime_explicit_action_csrf(runtime):
+    seed(runtime)
+    page = request(runtime, '/bundles/SR-DEMO-001')['body']
+    form = re.search(rb'<form[^>]+/passport[^>]*>(.*?)</form>', page, re.S)[1]
+    token = re.search(rb'name="csrf" value="([^"]+)"', form)[1].decode()
+    result = request(runtime, '/bundles/SR-DEMO-001/passport', 'POST',
+                     {'csrf': token, 'confirm': 'yes'})
+    assert result['status'] == 200
+    assert result['body'].startswith(b'PK')

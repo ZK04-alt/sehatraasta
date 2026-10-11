@@ -44,7 +44,11 @@ def create_app(config=None):
     def form_token(path=None, errors=None, visit_context=None):
         if 'csrf' not in session:
             session['csrf'] = secrets.token_hex(24)
-        return signer().dumps({'session': session['csrf'], 'path': path or request.path,
+        target = path or request.path
+        # url_for includes the deployment mount; request.path does not.
+        if path and request.script_root and target.startswith(request.script_root + '/'):
+            target = target[len(request.script_root):]
+        return signer().dumps({'session': session['csrf'], 'path': target,
                                'dataset': app.config['DATASET_GENERATION'],
                                'nonce': secrets.token_hex(16), 'errors': errors or [], 'visit_context':visit_context})
 
