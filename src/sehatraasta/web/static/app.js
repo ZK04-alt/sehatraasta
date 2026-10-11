@@ -33,9 +33,15 @@ if (document.body.classList.contains('interface-app')) {
   document.addEventListener('focusout', () => setTimeout(keyboardLayout, 100));
 }
 const scanner = document.querySelector('[data-qr-scanner]');
-if (scanner && window.SRAndroid && window.SRAndroid.scanQR) {
-  scanner.querySelector('[data-scan-camera]').addEventListener('click', () => window.SRAndroid.scanQR(false, scanner.dataset.prompt));
-  scanner.querySelector('[data-scan-image]').addEventListener('click', () => window.SRAndroid.scanQR(true, scanner.dataset.prompt));
+if (scanner && ((window.SRAndroid && window.SRAndroid.scanQR) || window.SRBrowser)) {
+  const scan = async mode => {
+    if (window.SRAndroid) { window.SRAndroid.scanQR(mode==='image', scanner.dataset.prompt); return; }
+    if (!window.SRBrowser.scanQR) { window.srQRResult(null,'unavailable'); return; }
+    const result = await window.SRBrowser.scanQR(mode, scanner.dataset);
+    window.srQRResult(result.payload,result.status);
+  };
+  scanner.querySelector('[data-scan-camera]').addEventListener('click', () => scan('camera'));
+  scanner.querySelector('[data-scan-image]').addEventListener('click', () => scan('image'));
   window.srQRResult = (payload, status) => {
     const field = document.querySelector('[name=payload]');
     if (typeof payload === 'string' && payload.length <= 200 && field) {

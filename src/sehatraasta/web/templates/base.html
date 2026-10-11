@@ -6,7 +6,7 @@
   <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
   <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='interface.css') }}">
-  {% if config.get('BROWSER_APP') %}<script src="{{ request.script_root.rsplit('/',1)[0] }}/bridge.js"></script>{% endif %}
+  {% if config.get('BROWSER_APP') %}<script src="{{ request.script_root.rsplit('/',1)[0] }}/bridge.js"></script><script src="{{ request.script_root.rsplit('/',1)[0] }}/vendor/jsQR.js"></script><script type="module" src="{{ request.script_root.rsplit('/',1)[0] }}/platform.mjs"></script><link rel="stylesheet" href="{{ request.script_root.rsplit('/',1)[0] }}/platform.css">{% endif %}
   <script defer src="{{ url_for('static', filename='app.js') }}"></script>
 </head>
 <body class="interface-app {{ 'android-app' if config.get('ANDROID_APP') else 'browser-app' if config.get('BROWSER_APP') else 'web-app' }} {{ 'print-view' if printing|default(false) else '' }}">
