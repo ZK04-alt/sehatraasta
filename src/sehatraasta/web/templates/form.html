@@ -17,7 +17,7 @@
 {% if revision is defined %}<input type="hidden" name="revision" value="{{ revision }}">{% endif %}
 <div class="language-switch"><label for="lang">{{ t('nav.language') }}</label><select id="lang" name="lang">{% for code, info in languages.items() %}<option value="{{ code }}" {{ 'selected' if code==lang else '' }}>{{ info[0] }}</option>{% endfor %}</select><button class="secondary" name="intent" value="language" formnovalidate>{{ t('action.language') }}</button></div>
 <div class="field-grid">{{ render_fields(fields, values, errors, t) }}</div>
-{% if kind=='lookup' and config.ANDROID_APP %}<div class="form-actions" data-qr-scanner data-prompt="{{ t('qr.prompt') }}" data-success="{{ t('qr.success') }}" data-cancelled="{{ t('qr.cancelled') }}" data-invalid="{{ t('qr.invalid') }}" data-unavailable="{{ t('qr.unavailable') }}">
+{% if kind=='lookup' and (config.ANDROID_APP or config.BROWSER_APP) %}<div class="form-actions" data-qr-scanner data-prompt="{{ t('qr.prompt') }}" data-success="{{ t('qr.success') }}" data-cancelled="{{ t('qr.cancelled') }}" data-invalid="{{ t('qr.invalid') }}" data-unavailable="{{ t('qr.unavailable') }}">
 <button type="button" class="secondary" data-scan-camera>{{ t('qr.camera') }}</button><button type="button" class="secondary" data-scan-image>{{ t('qr.image') }}</button><p role="status" data-scan-status></p></div>{% endif %}
 <div class="form-actions">
 {% if kind=='restore' %}<button name="intent" value="check">{{ t('action.check') }}</button>{% if summary and not restored %}<button name="intent" value="restore">{{ t('action.restore') }}</button>{% endif %}

@@ -519,8 +519,8 @@ def restore():
                            summary=summary, restored=restored, back=location('queue'), kind='restore'), 422 if errors else 200
 
 
-@pages.get('/privacy')
-@pages.get('/terms')
+@pages.get('/privacy', endpoint='privacy')
+@pages.get('/terms', endpoint='terms')
 def policy():
     kind = request.path.strip('/')
     return render_template('policy.html', title='page.' + kind, policy=kind)

@@ -91,7 +91,7 @@ def create_app(config=None):
         for code in LANGUAGES:
             parameters = request.args.to_dict(flat=False)
             parameters['lang'] = [code]
-            language_urls[code] = request.path + '?' + urlencode(parameters, doseq=True)
+            language_urls[code] = request.script_root + request.path + '?' + urlencode(parameters, doseq=True)
         def medical_date_label(visit):
             if visit.medical_date_kind == 'unknown':
                 return translate('date.unknown', language)
@@ -109,6 +109,10 @@ def create_app(config=None):
         response.headers['Content-Security-Policy'] = "default-src 'none'; style-src 'self'; script-src 'self'; worker-src 'self'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['X-Frame-Options'] = 'DENY'
+        if app.config.get('BROWSER_APP'):
+            response.headers['Content-Security-Policy'] = response.headers['Content-Security-Policy'].replace(
+                "frame-ancestors 'none'", "frame-ancestors 'self'")
+            response.headers['X-Frame-Options'] = 'SAMEORIGIN'
         # Keep same-origin form Origin headers usable; send no referrer off-site.
         response.headers['Referrer-Policy'] = 'same-origin'
         response.headers['Cache-Control'] = 'no-store'
