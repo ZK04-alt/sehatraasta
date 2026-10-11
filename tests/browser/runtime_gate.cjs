@@ -11,6 +11,16 @@ const server = http.createServer((req, res) => {
     res.writeHead(200, {'Content-Type':'text/html'});
     return res.end('<!doctype html><title>Isolated runtime gate</title>');
   }
+  if(req.url === '/sehatraasta/iphone/fault-worker.mjs') {
+    res.writeHead(200,{'Content-Type':'text/javascript'});
+    return res.end(`let armed=false;const early=[];self.onmessage=event=>early.push(event);const put=IDBObjectStore.prototype.put;
+      IDBObjectStore.prototype.put=function(value,...args){
+        if(armed&&value?.bytes?.length>1048576) throw new DOMException('Injected storage failure','QuotaExceededError');
+        return put.call(this,value,...args);
+      };
+      self.addEventListener('message',event=>{if(event.data.type==='arm-storage-fault') armed=true;});
+      await import('./runtime-worker.mjs');for(const event of early) self.onmessage(event);`);
+  }
   const name = decodeURIComponent(new URL(req.url, 'http://localhost').pathname).replace(/^\/sehatraasta\/iphone\//, '');
   const file = path.resolve(build, name);
   if(!file.startsWith(build + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) {
@@ -30,25 +40,34 @@ const server = http.createServer((req, res) => {
     page.on('request', request => requests.push({url:request.url(),method:request.method()}));
     await page.goto('http://127.0.0.1:' + server.address().port);
     const result = await page.evaluate(async ({mount}) => {
-      const worker = new Worker('/sehatraasta/iphone/runtime-worker.mjs', {type:'module'});
-      const capability = crypto.randomUUID(), waiting = new Map();
+      let worker = new Worker('/sehatraasta/iphone/runtime-worker.mjs', {type:'module'});
+      let capability = crypto.randomUUID();
+      const owner = crypto.randomUUID(), waiting = new Map();
       let next = 0;
-      worker.onmessage = ({data}) => {
+      const receive = ({data}) => {
         const item = waiting.get(data.id);
         if(!item) return;
         clearTimeout(item.timeout); waiting.delete(data.id); item.resolve(data);
       };
-      worker.onerror = error => {
+      const failed = error => {
         for(const item of waiting.values()) {clearTimeout(item.timeout);item.reject(new Error(error.message));}
         waiting.clear();
       };
+      worker.onmessage=receive;worker.onerror=failed;
       const send = (type, extra={}) => new Promise((resolve,reject) => {
         const id = ++next;
         const timeout = setTimeout(()=>reject(new Error('Worker timed out: '+type)),60000);
         waiting.set(id,{resolve,reject,timeout}); worker.postMessage({type,id,capability,...extra});
       });
-      const boot = await send('bootstrap',{origin:location.origin,mount});
+      const boot = await send('bootstrap',{origin:location.origin,mount,owner});
       if(boot.type!=='ready') throw new Error('Bootstrap failed: '+JSON.stringify(boot));
+      const second=new Worker('/sehatraasta/iphone/runtime-worker.mjs',{type:'module'});
+      const conflict=await new Promise(resolve=>{
+        second.onmessage=({data})=>resolve(data);
+        second.postMessage({type:'bootstrap',id:1,origin:location.origin,mount,owner:crypto.randomUUID(),capability:crypto.randomUUID()});
+      });
+      second.terminate();
+      if(conflict.type!=='failure'||conflict.code!=='SnapshotConflict') throw new Error('Second worker acquired the active dataset');
       async function request(path, method='GET', values=null) {
         let headers = [], body = new Uint8Array();
         if(values instanceof FormData) {
@@ -71,6 +90,20 @@ const server = http.createServer((req, res) => {
         return /name="csrf" value="([^"]+)"/.exec(page.text)[1];
       };
       const post = async (path,values) => request(path,'POST',{csrf:await token(path),...values});
+      const multipart = async (path,values,fileName,content) => {
+        const page=await request(path);status(page,200,'multipart form');
+        const data=new FormData();
+        for(const match of page.text.matchAll(/<input[^>]*type="hidden"[^>]*name="([^"]+)"[^>]*value="([^"]*)"/g)) data.set(match[1],match[2]);
+        for(const [key,value] of Object.entries(values)) data.set(key,value);
+        data.set('file',new File([content],fileName,{type:'application/pdf'}));
+        return request(path,'POST',data);
+      };
+      const confirm = async path => {
+        const page=await request(path);status(page,200,'confirmation form');
+        const fields={confirm:'yes',csrf:/name="csrf" value="([^"]+)"/.exec(page.text)[1]};
+        const revision=/name="revision" value="([^"]+)"/.exec(page.text);if(revision) fields.revision=revision[1];
+        return request(path,'POST',fields);
+      };
       status(await request('/'),200,'empty queue');
       status(await post('/patients/new',{name:'Amina Browser Demo',birth_year:'1980',language:'ENGLISH'}),303,'patient');
       const patients = await request('/patients');
@@ -91,9 +124,62 @@ const server = http.createServer((req, res) => {
       status(await request(visitPath+'/attachments/new','POST',form),303,'document upload');
       const backup = await post('/backups',{confirm:'yes'}); status(backup,200,'backup');
       if(backup.body[0]!==80||backup.body[1]!==75) throw new Error('Backup is not a ZIP archive');
+      const documents=await request(visitPath+'/attachments');
+      const document=/\/attachments\/(AT-[^"?\/]+)\//.exec(documents.text)[1];
+      status(await multipart(visitPath+'/attachments/new',{category:'OTHER',date:'2026-10-11',source_type:'NOT_SUPPLIED'},'Rejected.pdf','Not a PDF'),422,'rejected original');
+      status(await multipart('/attachments/'+document+'/replace',{},'Replacement.pdf','%PDF-1.4\nReplacement fictional original\n%%EOF'),303,'replace');
+      const replacement=await request('/attachments/'+document+'/content');
+      if(!replacement.text.includes('Replacement fictional original')) throw new Error('Replacement missing');
+      status(await confirm('/attachments/'+document+'/delete'),303,'remove document');
+      const removed=await request('/removed');
+      const removedId=/\/removed\/([^"?\/]+)\/restore/.exec(removed.text)[1];
+      status(await confirm('/removed/'+removedId+'/restore'),303,'restore document');
+      status(await request('/attachments/'+document+'/content'),200,'restored original');
+      status(await confirm('/attachments/'+document+'/delete'),303,'remove again');
+      const again=await request('/removed');
+      const permanentId=/\/removed\/([^"?\/]+)\/permanent/.exec(again.text)[1];
+      status(await confirm('/removed/'+permanentId+'/permanent'),303,'permanent deletion');
+      status(await request('/attachments/'+document+'/content'),404,'deleted original');
+      // Restore the original complete dataset, including its original file.
+      status(await post('/patients/new',{name:'Later Browser Demo',language:'ENGLISH'}),303,'later patient');
+      for(const intent of ['check','restore']) {
+        const data=new FormData();data.set('csrf',await token('/restore'));data.set('intent',intent);
+        data.set('archive',new File([backup.body],'backup.zip',{type:'application/zip'}));
+        status(await request('/restore','POST',data),200,'full backup '+intent);
+      }
+      const restoredPatients=await request('/patients');
+      if(restoredPatients.text.includes('Later Browser Demo')) throw new Error('Restore did not activate the archived dataset');
+      const restoredOriginal=await request('/attachments/'+document+'/content');
+      if(!restoredOriginal.text.includes('Fictional runtime original')) throw new Error('Original bytes not restored');
       status(await request(visitPath+'/print'),200,'report');
       worker.terminate();
-      return {patient,visit:visitPath,backupBytes:backup.body.length,exactTotal:'2500.30',queue:true,upload:true,report:true};
+      worker = new Worker('/sehatraasta/iphone/fault-worker.mjs',{type:'module'});
+      worker.onmessage=receive;worker.onerror=failed;capability=crypto.randomUUID();
+      const restart = await send('bootstrap',{origin:location.origin,mount,owner});
+      if(restart.type!=='ready') throw new Error('Restart failed: '+JSON.stringify(restart));
+      status(await request('/patients/'+patient),200,'patient after restart');
+      const reopenedCosts=await request(visitPath+'/costs');
+      if(!reopenedCosts.text.includes('2500.30')&&!reopenedCosts.text.includes('2,500.30')) throw new Error('Costs lost after restart');
+      const reopenedDocuments=await request(visitPath+'/attachments');
+      if(!reopenedDocuments.text.includes('Demo.pdf')) throw new Error('Original lost after restart');
+      const failingData=new FormData();failingData.set('csrf',await token(visitPath+'/attachments/new'));
+      for(const [key,value] of Object.entries({category:'OTHER',date:'2026-10-11',source_type:'NOT_SUPPLIED'})) failingData.set(key,value);
+      failingData.set('file',new File(['%PDF-1.4\n',new Uint8Array(2*1024*1024),'\n%%EOF'],'Quota.pdf',{type:'application/pdf'}));
+      const encoded=new Response(failingData);
+      worker.postMessage({type:'arm-storage-fault'});
+      const failedWrite=await send('request',{request:{method:'POST',path:mount+visitPath+'/attachments/new',query:'',
+        headers:[['Content-Type',encoded.headers.get('Content-Type')],['Origin',location.origin]],body:new Uint8Array(await encoded.arrayBuffer())}});
+      if(failedWrite.type!=='failure'||failedWrite.code!=='SnapshotWriteError') throw new Error('Durable fault result: '+JSON.stringify({type:failedWrite.type,code:failedWrite.code,status:failedWrite.response?.status}));
+      const frozen=await send('request',{request:{method:'GET',path:mount+'/',query:'',headers:[],body:new Uint8Array()}});
+      if(frozen.type!=='failure') throw new Error('Unconfirmed dataset remained writable');
+      worker.terminate();
+      worker=new Worker('/sehatraasta/iphone/runtime-worker.mjs',{type:'module'});
+      worker.onmessage=receive;worker.onerror=failed;capability=crypto.randomUUID();
+      if((await send('bootstrap',{origin:location.origin,mount,owner})).type!=='ready') throw new Error('Quota recovery failed');
+      const lastConfirmed=await request(visitPath+'/attachments');
+      if(lastConfirmed.text.includes('Quota.pdf')||!lastConfirmed.text.includes('Demo.pdf')) throw new Error('Quota failure damaged the confirmed snapshot');
+      worker.terminate();
+      return {patient,visit:visitPath,backupBytes:backup.body.length,exactTotal:'2500.30',queue:true,upload:true,report:true,restarted:true,rejected:true,replaced:true,removed:true,permanentlyDeleted:true,fullRestore:true,secondWorkerRejected:true,quotaRollback:true};
     },{mount});
     assert.deepEqual(errors,[]);
     assert.ok(requests.every(request=>request.method==='GET'),'Record operations reached HTTP');
