@@ -164,6 +164,8 @@ def build_iphone(destination: Path, source_ref: str = 'HEAD', runtime_dir=None) 
     destination.mkdir(parents=True)
     write_archive(destination / 'application.zip', files)
     public = {'runtime/' + name: data for name, data in runtime.items()}
+    # A Python-only update must also create a new complete offline cache.
+    public['application.zip'] = (destination / 'application.zip').read_bytes()
     public.update(qr_assets(ROOT / 'output/iphone-qr'))
     prefix = 'sehatraasta/web/static/'
     for name, content in files.items():

@@ -101,3 +101,18 @@ def test_modified_runtime_is_rejected_before_output(tmp_path, runtime_files):
     with pytest.raises(ValueError, match='runtime integrity'):
         builder().build_iphone(destination, runtime_dir=runtime_files)
     assert not destination.exists()
+
+
+def test_python_only_change_has_a_new_offline_cache_identity(tmp_path, runtime_files, monkeypatch):
+    module = builder()
+    first = module.build_iphone(tmp_path / 'first', runtime_dir=runtime_files)
+    original = module.application_files
+
+    def changed(ref):
+        files = original(ref)
+        files['sehatraasta/browser_runtime.py'] += b'\n# Changed Python fixture\n'
+        return files
+
+    monkeypatch.setattr(module, 'application_files', changed)
+    second = module.build_iphone(tmp_path / 'second', runtime_dir=runtime_files)
+    assert first['asset_set'] != second['asset_set']
