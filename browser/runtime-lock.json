@@ -1,0 +1,13 @@
+{
+  "version": "314.0.7",
+  "assets": [
+    {"path":"pyodide.mjs","size":17931,"sha256":"6f1d60f7bf529beb300f0f47983c921d3982363640ba20af0e38efdddbc66109"},
+    {"path":"pyodide.asm.mjs","size":1250344,"sha256":"f7cdc8ece80678ceb712f8e65ebe6d3a83203a180c399865f49612a051693635"},
+    {"path":"pyodide.asm.wasm","size":9598218,"sha256":"cc36e3cab04fdfc9a63ff13eb52eae2b911bf46c025cc7b281f394bd3de1d5e6"},
+    {"path":"python_stdlib.zip","size":2545637,"sha256":"fa1957e5777068fc4f7437f96d860ae2fbe9c19732ba06c84e004ec16dd7dd7a"},
+    {"path":"pyodide-lock.json","size":119077,"sha256":"5dc2fc119108bc148c7457dc86e7675b5c87e1cafd420b9c34c1eaef7b36c010"},
+    {"path":"LICENSE","size":16725,"sha256":"1f256ecad192880510e84ad60474eab7589218784b9a50bc7ceee34c2b91f1d5"},
+    {"path":"CPython-LICENSE.txt","size":13804,"sha256":"b0e25a78cffb43f4d92de8b61ccfa1f1f98ecbc22330b54b5251e7b6ba010231"},
+    {"path":"Emscripten-LICENSE.txt","size":5093,"sha256":"620a78084fc7ca97c0b5dea9abf891f3ffcadfdbf305276f099c9c4e12fc1d86"}
+  ]
+}
