@@ -148,8 +148,14 @@ def build_iphone(destination: Path, source_ref: str = 'HEAD', runtime_dir=None) 
     browser_source = ROOT / 'browser'
     if browser_source.exists():
         for path in sorted(browser_source.rglob('*')):
-            if path.is_file() and path.suffix in ('.html', '.mjs', '.css', '.webmanifest', '.png', '.svg', '.txt'):
+            if path.is_file() and path.suffix in ('.html', '.js', '.mjs', '.css', '.webmanifest', '.png', '.svg', '.txt'):
                 public[path.relative_to(browser_source).as_posix()] = path.read_bytes()
+    identity = sha256()
+    for name, content in sorted(public.items()):
+        identity.update(name.encode() + b'\0' + sha256(content).digest())
+    asset_set = identity.hexdigest()
+    if 'service-worker.mjs' in public:
+        public['service-worker.mjs'] = public['service-worker.mjs'].replace(b'__BUILD_ID__', asset_set.encode())
     for name, content in public.items():
         if PurePosixPath(name).is_absolute() or '..' in PurePosixPath(name).parts:
             raise ValueError('Invalid public asset path')
@@ -159,7 +165,7 @@ def build_iphone(destination: Path, source_ref: str = 'HEAD', runtime_dir=None) 
     assets = [describe(path.relative_to(destination).as_posix(), path.read_bytes())
               for path in sorted(destination.rglob('*')) if path.is_file()]
     revision = git(['rev-parse', source_ref]).decode().strip()
-    manifest = {'version': '1.6.0-iphone', 'runtime': RUNTIME_VERSION, 'source_revision': revision,
+    manifest = {'version': '1.6.0-iphone', 'asset_set': asset_set, 'runtime': RUNTIME_VERSION, 'source_revision': revision,
                 'dependencies': {name: pair[0] for name, pair in DEPENDENCIES.items()}, 'assets': assets}
     (destination / 'asset-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
     return manifest
