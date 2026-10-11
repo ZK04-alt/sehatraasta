@@ -18,6 +18,7 @@
   window.srRememberLocation=url=>{const target=new URL(url,current);if(scoped(target)){current=target.href;send('remember',{url:current}).catch(()=>{});}};
   window.srNavigate=url=>send('navigate',{url:new URL(url,current).href});
   window.srBack=()=>send('back');
+  window.SRBrowser={deliverExport:response=>send('export',{response})};
   const nativeFetch=window.fetch.bind(window);
   window.fetch=async(input,init={})=>{
     const url=new URL(input instanceof Request?input.url:input,current);
@@ -52,7 +53,6 @@
     if(url.hash && (url.pathname===new URL(current).pathname || link.getAttribute('href').startsWith('#')))return;
     event.preventDefault();window.srNavigate(url.href).catch(()=>{});
   });
-  window.SRBrowser={exportFile:response=>send('export',{response})};
   });
   window.addEventListener('pagehide',()=>{for(const item of pending.values()){clearTimeout(item.timeout);item.reject(new Error('Page closed'));}pending.clear();});
 })();

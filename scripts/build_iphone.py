@@ -81,6 +81,29 @@ def runtime_assets(runtime_dir):
     return assets
 
 
+def qr_assets(cache):
+    """Pinned source decoder and licence; only the build may download them."""
+    cache.mkdir(parents=True, exist_ok=True)
+    lock = json.loads((ROOT / 'browser/qr-lock.json').read_text(encoding='utf-8'))
+    if lock.get('version') != '1.4.0':
+        raise ValueError('QR decoder integrity: unexpected version')
+    assets = {}
+    for item in lock['assets']:
+        if item['path'] not in ('jsQR.js', 'jsqr-LICENSE.txt'):
+            raise ValueError('QR decoder integrity: unexpected file')
+        path = cache / item['path']
+        if path.exists():
+            content = path.read_bytes()
+        else:
+            with urlopen(item['url'], timeout=60) as response:
+                content = response.read()
+        if describe(item['path'], content) != {key: item[key] for key in ('path', 'size', 'sha256')}:
+            raise ValueError('QR decoder integrity: changed file')
+        path.write_bytes(content)
+        assets['vendor/' + item['path']] = content
+    return assets
+
+
 def dependency_files():
     files = {}
     for name, (version, prefix) in DEPENDENCIES.items():
@@ -141,6 +164,7 @@ def build_iphone(destination: Path, source_ref: str = 'HEAD', runtime_dir=None) 
     destination.mkdir(parents=True)
     write_archive(destination / 'application.zip', files)
     public = {'runtime/' + name: data for name, data in runtime.items()}
+    public.update(qr_assets(ROOT / 'output/iphone-qr'))
     prefix = 'sehatraasta/web/static/'
     for name, content in files.items():
         if name.startswith(prefix):
