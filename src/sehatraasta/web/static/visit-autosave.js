@@ -73,9 +73,9 @@ if (visitForm) {
   document.addEventListener('click', async event => {
     const link = event.target.closest('a[href]');
     if (!link || stopped || (!dirty && !pending) || event.ctrlKey || event.metaKey || event.shiftKey || link.target) return;
-    const target = new URL(link.href, location.href);
     const current = window.srCurrentURL ? new URL(window.srCurrentURL()) : location;
-    if (target.origin !== location.origin || (target.hash && target.pathname === current.pathname)) return;
+    const target = new URL(link.href, current.href);
+    if (target.origin !== current.origin || (target.hash && target.pathname === current.pathname)) return;
     event.preventDefault();
     if (await flushVisit()) { stopped = true; if (window.srNavigate) window.srNavigate(link.href); else location.href = link.href; }
   });
@@ -83,7 +83,7 @@ if (visitForm) {
   window.srDismissOverlay = () => {
     if (dismissOverlay && dismissOverlay()) return true;
     if (dirty || pending) {
-      flushVisit().then(saved => { if (saved) { stopped = true; history.back(); } });
+      flushVisit().then(saved => { if (saved) { stopped = true; if (window.srBack) window.srBack(); else history.back(); } });
       return true;
     }
     return false;
