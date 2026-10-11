@@ -3,7 +3,7 @@ const status = document.querySelector('#report-status');
 const button = document.querySelector('#report-print');
 const retry = document.querySelector('#report-retry');
 let activeDocument = '';
-retry.addEventListener('click', () => window.location.reload());
+retry.addEventListener('click', () => { if (window.srNavigate) window.srNavigate(window.srCurrentURL()); else window.location.reload(); });
 async function readDocument(url, format) {
   const controller = new AbortController();
   const deadline = setTimeout(() => controller.abort(), 30000);

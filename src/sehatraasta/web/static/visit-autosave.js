@@ -20,7 +20,7 @@ if (visitForm) {
       const result = await response.json();
       visitForm.elements.unfinished_id.value = result.draft_id;
       visitForm.elements.unfinished_revision.value = result.revision;
-      history.replaceState(null, '', result.resume_url);
+      if (window.srRememberLocation) window.srRememberLocation(result.resume_url); else history.replaceState(null, '', result.resume_url);
       note.textContent = dirty ? visitForm.dataset.saving : visitForm.dataset.saved;
       note.setAttribute('role', 'status');
       return true;
@@ -74,9 +74,10 @@ if (visitForm) {
     const link = event.target.closest('a[href]');
     if (!link || stopped || (!dirty && !pending) || event.ctrlKey || event.metaKey || event.shiftKey || link.target) return;
     const target = new URL(link.href, location.href);
-    if (target.origin !== location.origin || (target.hash && target.pathname === location.pathname)) return;
+    const current = window.srCurrentURL ? new URL(window.srCurrentURL()) : location;
+    if (target.origin !== location.origin || (target.hash && target.pathname === current.pathname)) return;
     event.preventDefault();
-    if (await flushVisit()) { stopped = true; location.href = link.href; }
+    if (await flushVisit()) { stopped = true; if (window.srNavigate) window.srNavigate(link.href); else location.href = link.href; }
   });
   const dismissOverlay = window.srDismissOverlay;
   window.srDismissOverlay = () => {

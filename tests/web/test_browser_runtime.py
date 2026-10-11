@@ -162,3 +162,11 @@ def test_browser_runtime_binary_static_and_cookie_survive_reopen(runtime):
     urdu = runtime.handle('GET', MOUNT + '/patients', urlencode({'lang': 'ur'}), [], b'')
     assert b'dir="rtl"' in urdu['body']
     assert b'lang="ur"' in request(adapter(runtime.root), '/patients')['body']
+
+
+def test_browser_runtime_never_uses_native_form_submission(runtime):
+    result = request(runtime, '/patients/new')
+    headers = dict(result['headers'])
+    assert "form-action 'none'" in headers['Content-Security-Policy']
+    assert b'/sehatraasta/iphone/bridge.js' in result['body']
+    assert b'browser-app' in result['body']

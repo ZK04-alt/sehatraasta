@@ -6,9 +6,10 @@
   <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
   <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='interface.css') }}">
+  {% if config.get('BROWSER_APP') %}<script src="{{ request.script_root.rsplit('/',1)[0] }}/bridge.js"></script>{% endif %}
   <script defer src="{{ url_for('static', filename='app.js') }}"></script>
 </head>
-<body class="interface-app {{ 'android-app' if config.get('ANDROID_APP') else 'web-app' }} {{ 'print-view' if printing|default(false) else '' }}">
+<body class="interface-app {{ 'android-app' if config.get('ANDROID_APP') else 'browser-app' if config.get('BROWSER_APP') else 'web-app' }} {{ 'print-view' if printing|default(false) else '' }}">
 <a class="skip" href="#main">{{ t('nav.skip') }}</a>
 <header class="masthead">
   <a class="brand" href="{{ url_for('pages.queue', lang=lang) }}"><img src="{{ url_for('static', filename='wordmark.svg') }}" width="220" height="64" alt="SehatRaasta"></a>

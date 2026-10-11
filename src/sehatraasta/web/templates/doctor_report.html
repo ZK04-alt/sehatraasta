@@ -3,6 +3,7 @@
 <title>{{ patient.name }} — {{ t('report.title') }}</title>
 <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='doctor-report.css') }}">
+{% if config.get('BROWSER_APP') %}<script src="{{ request.script_root.rsplit('/',1)[0] }}/bridge.js"></script>{% endif %}
 <script type="module" src="{{ url_for('static', filename='doctor-report.js') }}"></script>
 </head><body>
 <nav class="report-toolbar"><a href="{{ url_for('pages.patient', patient_id=patient.ID, lang=lang) }}">{{ t('action.back') }}</a><a href="{{ selection_url }}">{{ t('report.choose') }}</a><button id="report-print" disabled>{{ t('report.save_pdf') }}</button><button id="report-retry" hidden>{{ t('report.retry') }}</button><span id="report-status" role="status" data-ready="{{ t('report.ready') }}" data-error="{{ t('report.failed') }}" data-limit-error="{{ t('report.limit_error') }}" data-timeout="{{ t('report.timeout') }}">{{ t('report.loading') }}</span></nav>
@@ -21,4 +22,4 @@
 <footer class="report-note">{{ t('report.scope') }} {{ t('report.qr_note') }}</footer>
 {% for visit in visits %}{% set visit_number=loop.index %}{% for document in visit.documents %}<section class="document-appendix" data-document="{{ document.MIME_type }}" data-document-name="{{ document.name }}" data-url="{{ url_for('pages.attachment_content', attachment_id=document.ID) }}" data-native-url="{{ url_for('pages.attachment_print_pages', attachment_id=document.ID) }}"><h3>{{ t('report.visit') }} {{ visit_number }} · {{ t('report.document') }} {{ loop.index }}</h3><p class="document-identity"><bdi dir="auto">{{ visit.bundle.source_facility }}</bdi> · <bdi dir="auto">{{ medical_date_label(visit.bundle) }}</bdi></p><p class="document-source"><bdi dir="auto">{{ document.name }}</bdi> · <bdi dir="auto">{{ document_date_label(document) }}</bdi>{% if document.source and document.source != 'source not supplied' %} · <bdi dir="auto">{{ document.source }}</bdi>{% endif %}</p><a class="report-original" href="{{ url_for('pages.download', attachment_id=document.ID) }}">{{ t('report.open_original') }}: <bdi dir="auto">{{ document.name }}</bdi></a><div class="document-pages"></div></section>{% endfor %}{% endfor %}
 <noscript><p class="report-note">{{ t('report.no_script') }}</p></noscript>
-</main><nav class="report-toolbar"><a href="/privacy?lang={{ lang }}">{{ t('page.privacy') }}</a><a href="/terms?lang={{ lang }}">{{ t('page.terms') }}</a></nav></body></html>
+</main><nav class="report-toolbar"><a href="{{ url_for('pages.privacy', lang=lang) }}">{{ t('page.privacy') }}</a><a href="{{ url_for('pages.terms', lang=lang) }}">{{ t('page.terms') }}</a></nav></body></html>

@@ -231,7 +231,8 @@ if (reportSelection) {
       const choices = new URLSearchParams(new FormData(reportSelection));
       choices.delete('preview');
       choices.set('lang', link.getAttribute('lang'));
-      window.location.href = window.location.pathname + '?' + choices.toString();
+      const target = (window.srCurrentURL ? new URL(window.srCurrentURL()).pathname : window.location.pathname) + '?' + choices.toString();
+      if (window.srNavigate) window.srNavigate(target); else window.location.href = target;
     });
   });
 }

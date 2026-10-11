@@ -111,7 +111,7 @@ def create_app(config=None):
         response.headers['X-Frame-Options'] = 'DENY'
         if app.config.get('BROWSER_APP'):
             response.headers['Content-Security-Policy'] = response.headers['Content-Security-Policy'].replace(
-                "frame-ancestors 'none'", "frame-ancestors 'self'")
+                "frame-ancestors 'none'", "frame-ancestors 'self'").replace("form-action 'self'", "form-action 'none'")
             response.headers['X-Frame-Options'] = 'SAMEORIGIN'
         # Keep same-origin form Origin headers usable; send no referrer off-site.
         response.headers['Referrer-Policy'] = 'same-origin'
