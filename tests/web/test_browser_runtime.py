@@ -181,3 +181,11 @@ def test_browser_runtime_explicit_action_csrf(runtime):
                      {'csrf': token, 'confirm': 'yes'})
     assert result['status'] == 200
     assert result['body'].startswith(b'PK')
+
+
+def test_browser_runtime_blank_optional_date_is_empty_text(runtime):
+    seed(runtime)
+    page = request(runtime, '/bundles/SR-DEMO-001/context')['body']
+    control = re.search(rb'<input[^>]+name="follow_up_date"[^>]*>', page)[0]
+    assert b'value=""' in control
+    assert b'value="None"' not in control

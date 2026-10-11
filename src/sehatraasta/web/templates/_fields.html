@@ -3,6 +3,8 @@
 {% set error = errors|selectattr('field', 'equalto', field.name)|first %}
 {% set control_id = field.control_id|default(field.name) %}
 {% set required = field.required and not field.conditional|default(false) %}
+{% set field_value = values.get(field.name, '') %}
+{% if field_value is none %}{% set field_value = '' %}{% endif %}
 <div class="field {{ 'wide' if field.kind in ['textarea','file','checkbox'] else '' }} {{ 'has-help' if field.hint else '' }}">
 <label for="{{ control_id }}">{{ t(field.label) }} <span class="requirement">{{ t('field.required' if field.required else 'field.optional') }}</span></label>
 {% if field.hint %}<details class="help-disclosure field-help"><summary><span aria-hidden="true">?</span><span class="sr-only">{{ t('app.help') }}: {{ t(field.label) }}</span></summary><p class="field-hint" id="{{ control_id }}-hint">{{ t(field.hint) }}</p></details>{% endif %}
@@ -21,7 +23,7 @@
 </div>
 </div>
 {% elif field.kind == 'year' %}
-<input id="{{ control_id }}" name="{{ field.name }}" type="{{ 'text' if error else field.input_kind|default('number') }}" inputmode="numeric" step="1" value="{{ values.get(field.name, '') }}" {{ 'required' if required else '' }} aria-describedby="{{ control_id }}-hint{% if error %} {{ control_id }}-error{% endif %}" {% if error %}aria-invalid="true"{% endif %}>
+<input id="{{ control_id }}" name="{{ field.name }}" type="{{ 'text' if error else field.input_kind|default('number') }}" inputmode="numeric" step="1" value="{{ field_value }}" {{ 'required' if required else '' }} aria-describedby="{{ control_id }}-hint{% if error %} {{ control_id }}-error{% endif %}" {% if error %}aria-invalid="true"{% endif %}>
 <details class="year-picker" data-year-picker data-target="{{ control_id }}" hidden>
 <summary>{{ t('field.choose_year') }}</summary>
 <div class="year-navigation"><button type="button" class="secondary" data-years-back>{{ t('action.earlier_years') }}</button><span data-year-range aria-live="polite"></span><button type="button" class="secondary" data-years-next>{{ t('action.later_years') }}</button></div>
@@ -35,10 +37,10 @@
 <option value="{{ value }}" {{ 'selected' if values.get(field.name)==value else '' }}>{{ t(label) if label.startswith('date.') else label if state_label.startswith('[Missing') else state_label }}</option>{% endfor %}
 </select>
 {% elif field.kind == 'textarea' %}
-<textarea id="{{ control_id }}" name="{{ field.name }}" rows="3" dir="auto" {{ 'required' if required else '' }} {% if error %}aria-invalid="true" aria-describedby="{{ control_id }}-error"{% elif field.hint %}aria-describedby="{{ control_id }}-hint"{% endif %}>{{ values.get(field.name, '') }}</textarea>
+<textarea id="{{ control_id }}" name="{{ field.name }}" rows="3" dir="auto" {{ 'required' if required else '' }} {% if error %}aria-invalid="true" aria-describedby="{{ control_id }}-error"{% elif field.hint %}aria-describedby="{{ control_id }}-hint"{% endif %}>{{ field_value }}</textarea>
 {% else %}
 <input id="{{ control_id }}" name="{{ field.name }}" type="{{ field.input_kind|default('text' if error and field.kind in ['date','datetime-local','number'] else field.kind) }}"
-{% if field.kind!='file' %}value="{{ 'yes' if field.kind=='checkbox' else values.get(field.name, '') }}"{% endif %}
+{% if field.kind!='file' %}value="{{ 'yes' if field.kind=='checkbox' else field_value }}"{% endif %}
 {{ 'required' if required else '' }} {{ 'checked' if field.kind=='checkbox' and values.get(field.name)=='yes' else '' }}
 {% if field.kind != 'checkbox' %}dir="{{ 'ltr' if field.kind in ['date','datetime-local','number'] or field.name in ['ID','patient_id','amount','payload'] else 'auto' }}"{% endif %}
 {% if error %}aria-invalid="true" aria-describedby="{{ control_id }}-error"{% elif field.hint %}aria-describedby="{{ control_id }}-hint"{% endif %}>
