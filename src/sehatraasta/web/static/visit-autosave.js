@@ -38,6 +38,7 @@ if (visitForm) {
     while (dirty) if (!await saveVisit()) return false;
     return true;
   }
+  if (window.srNavigate) window.srFlushUnfinished = flushVisit;
   function changed() {
     if (stopped) return;
     dirty = true;
