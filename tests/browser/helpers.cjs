@@ -32,8 +32,9 @@ async function ready(page) {await page.waitForSelector('body[data-state=ready]',
 async function openApp(context,base) {const page=await context.newPage();await page.goto(base);const frame=await ready(page);return{page,frame};}
 async function navigate(page,url) {
   const marker=String(Date.now())+Math.random();
-  await page.frames()[1].evaluate(({url,marker})=>{document.documentElement.dataset.testNavigation=marker;window.srNavigate(url);},{url,marker});
-  await page.waitForFunction(({url,marker})=>{const app=document.querySelector('#app'),root=app.contentDocument?.documentElement;return app.dataset.url===url&&root&&root.dataset.testNavigation!==marker;},{url,marker});
+  await page.evaluate(marker=>document.querySelector('#app').addEventListener('load',()=>window.testNavigationComplete=marker,{once:true}),marker);
+  await page.frames()[1].evaluate(url=>{window.srNavigate(url);},url);
+  await page.waitForFunction(({url,marker})=>document.querySelector('#app').dataset.url===url&&window.testNavigationComplete===marker,{url,marker});
   return page.frames()[1];
 }
 module.exports={fixture,ready,openApp,navigate,prefix};

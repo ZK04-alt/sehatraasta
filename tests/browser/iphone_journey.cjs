@@ -14,8 +14,8 @@ for(const lang of ['en','ur','ps'])test('complete offline journey '+lang,async()
     const tag=await field.evaluate(el=>el.tagName);if(tag==='SELECT')await field.selectOption(value);else await field.fill(value);
   }
   async function submit(selector='[name=intent][value=save]'){
-    const marker=String(Date.now())+Math.random();await frame.evaluate(marker=>document.documentElement.dataset.testSubmit=marker,marker);
-    await frame.locator(selector).click();await page.waitForFunction(marker=>{const root=document.querySelector('#app').contentDocument?.documentElement;return root&&root.dataset.testSubmit!==marker;},marker);
+    const marker=String(Date.now())+Math.random();await page.evaluate(marker=>document.querySelector('#app').addEventListener('load',()=>window.testFormComplete=marker,{once:true}),marker);
+    await frame.locator(selector).click();await page.waitForFunction(marker=>window.testFormComplete===marker,marker);
     frame=page.frames()[1];
   }
   async function record(kind,values){await go(visit+'/'+kind+'/new');for(const [name,value]of Object.entries(values))await set(name,value);await submit();assert.equal(await frame.locator('#errors').count(),0,await frame.locator('body').innerText());}
