@@ -1,4 +1,5 @@
 import {SnapshotStore} from './storage.mjs';
+const BUILD_ID='__BUILD_ID__';
 const base='/sehatraasta/iphone/',mount=base+'app',origin=location.origin;
 const frame=document.querySelector('#app'),message=document.querySelector('#message'),heading=document.querySelector('#heading'),retry=document.querySelector('#retry');
 const words={
@@ -7,10 +8,15 @@ const words={
   ps:{starting:'سهت راسته پرانیستل کېږي',setup:'د آف لاین کارولو لپاره چمتو کېږي. تر بشپړېدو پورې له انټرنېټ سره وصل پاتې شئ.',install:'سهت راسته په Home Screen کې اضافه کړئ',installHelp:'په Safari کې Share او بیا Add to Home Screen ووهئ. د معلوماتو له لیکلو مخکې نوی نښه پرانیزئ.',failed:'اپ نه شو پرانیستل کېدای. معلومات سرور ته نه دي لېږل شوي. خوندي ریکارډونه بیا پرانیزئ.',conflict:'اپ په بله کړکۍ کې خلاص دی. هغه وتړئ او بیا هڅه وکړئ.',saveFailed:'د دې بدلون خوندي کېدل نه دي تایید شوي. خوندي ریکارډونه بیا پرانیزئ.',retry:'بیا هڅه وکړئ',storage:'په Files کې منظم بیک اپ وساتئ. د ویب پاڼې د معلوماتو پاکول ریکارډونه ړنګولای شي. د براؤزر دایمي ساتنه تضمین نه ده.',ready:'آف لاین کارولو ته چمتو',save:'په Files کې خوندي کړئ',share:'شریکول',close:'بندول',export:'فایل خوندي کړئ',update:'اپ ډیټ چمتو دی. کار بشپړ کړئ او اپ بیا پرانیزئ.'}
 };
 let lang='en';try{lang=localStorage.getItem('sr-language')||'en';}catch{}if(!words[lang])lang='en';
-let worker,capability,registration,routeToken,seq=0,failed=false,opening=false,busy=0,current=origin+mount+'/?lang='+lang;
+words.en.updated='This window needs to reopen after the update. Saved records are unchanged.';
+words.ur.updated='اپ ڈیٹ کے بعد یہ ونڈو دوبارہ کھولیں۔ محفوظ ریکارڈ برقرار ہیں۔';
+words.ps.updated='له اپ ډیټ وروسته دا کړکۍ بیا پرانیزئ. خوندي ریکارډونه پاتې دي.';
+let worker,capability,registration,routeToken,seq=0,failed=false,opening=false,busy=0,updating=false,needsReload=false,current=origin+mount+'/?lang='+lang;
+let controller=navigator.serviceWorker?.controller;
 const waiting=new Map();let transport=Promise.resolve();
 const text=key=>words[lang][key];
-function state(name,key){document.body.dataset.state=name;heading.textContent=text(name==='install'?'install':'starting');message.textContent=text(key);retry.hidden=name!=='failed';retry.textContent=text('retry');document.querySelector('#storage-note').textContent=name==='install'?'':text('storage');frame.hidden=name!=='ready';}
+const canUpdate=()=>!failed&&!opening&&!updating&&!!worker&&busy===0&&document.body.dataset.state==='ready';
+function state(name,key){document.body.dataset.state=name;heading.textContent=text(name==='install'?'install':'starting');message.textContent=text(key);retry.hidden=name!=='failed';retry.textContent=text('retry');document.querySelector('#storage-note').textContent=name==='install'?'':text('storage');frame.hidden=name!=='ready';document.querySelector('#apply-update').disabled=!canUpdate();if(name==='failed')document.querySelector('#update-notice').hidden=true;}
 function language(code){lang=code;document.documentElement.lang=lang;document.documentElement.dir=lang==='en'?'ltr':'rtl';try{localStorage.setItem('sr-language',lang);}catch{}document.querySelectorAll('[data-lang]').forEach(b=>b.setAttribute('aria-current',String(b.dataset.lang===lang)));}
 language(lang);document.querySelectorAll('[data-lang]').forEach(button=>button.onclick=()=>{language(button.dataset.lang);if(document.body.dataset.state==='install')state('install','installHelp');else start();});
 const scoped=url=>url.origin===origin && (url.pathname===mount || url.pathname.startsWith(mount+'/'));
@@ -29,7 +35,7 @@ async function invoke(input){
   if(!scoped(url)||!['GET','HEAD','POST'].includes(input.method)||(input.body?.byteLength||0)>102*1024*1024)throw new Error('Invalid local request');
   const request={...input,headers:(input.headers||[]).filter(([key])=>!['origin','host','cookie'].includes(key.toLowerCase()))};
   if(input.method==='POST')request.headers.push(['Origin',origin]);
-  busy++;document.querySelector('#apply-update').disabled=true;try{const result=await call('request',{request});return result.response;}finally{busy--;document.querySelector('#apply-update').disabled=busy!==0;}
+  busy++;document.querySelector('#apply-update').disabled=true;try{const result=await call('request',{request});return result.response;}finally{busy--;document.querySelector('#apply-update').disabled=!canUpdate();}
 }
 async function follow(input){let response,url=new URL(input.path+(input.query?'?'+input.query:''),origin);
   for(let count=0;count<8;count++){
@@ -99,6 +105,9 @@ async function setup(){
   try{await navigator.storage?.persist?.();}catch{}
 }
 navigator.serviceWorker?.addEventListener('message',event=>{
+  if(event.data?.type==='cache-version'&&event.source?.scriptURL===origin+base+'service-worker.mjs'&&event.ports[0]){
+    event.ports[0].postMessage({version:BUILD_ID,retired:needsReload});return;
+  }
   if(event.source!==navigator.serviceWorker.controller||event.data?.type!=='local-request'||event.data.token!==routeToken)return;
   const port=event.ports[0];if(!port)return;
   transport=transport.then(async()=>{try{port.postMessage({response:await invoke(event.data.request)});}catch{port.postMessage({failure:true});}finally{port.close();}});
@@ -117,15 +126,31 @@ async function start(){
     if(registration.waiting){message.textContent=text('update');}
   }catch{if(!failed)fail();}finally{opening=false;}
 }
-retry.onclick=()=>start();
+retry.onclick=()=>needsReload?location.reload():start();
 document.querySelector('#apply-update').onclick=async()=>{
-  if(busy||!registration?.waiting)return;
-  const flush=frame.contentWindow?.srFlushUnfinished;if(flush&&!await flush())return;
-  await transport;if(busy)return;
-  worker?.terminate();frame.hidden=true;
-  navigator.serviceWorker.addEventListener('controllerchange',()=>location.reload(),{once:true});
-  registration.waiting.postMessage({type:'activate-update'});
+  if(!canUpdate()||!registration?.waiting)return;
+  updating=true;frame.inert=true;document.querySelector('#apply-update').disabled=true;
+  try{
+    const flush=frame.contentWindow?.srFlushUnfinished;if(flush&&!await flush())return;
+    await transport;
+    // A fenced durable request proves this is still the actual writer.
+    const proof=await invoke({method:'GET',path:mount+'/',query:'',headers:[],body:new Uint8Array()});
+    await transport;if(failed||busy||proof.status!==200)throw new Error('Update unavailable');
+    worker.terminate();worker=null;frame.hidden=true;
+    registration.waiting.postMessage({type:'activate-update'});
+  }catch{if(!failed)fail();}
+  finally{if(worker&&!failed){updating=false;frame.inert=false;}document.querySelector('#apply-update').disabled=!canUpdate();}
 };
+navigator.serviceWorker?.addEventListener('controllerchange',async()=>{
+  const previous=controller;controller=navigator.serviceWorker.controller;
+  if(!previous||!controller||previous===controller)return;
+  if(updating){location.reload();return;}
+  // Other windows retire their old code without competing for the new writer.
+  needsReload=true;frame.inert=true;document.querySelector('#apply-update').disabled=true;
+  const flush=frame.contentWindow?.srFlushUnfinished;
+  if(!failed&&worker){if(flush&&!await flush()){fail();return;}await transport;}
+  worker?.terminate();worker=null;failed=true;state('failed','updated');
+});
 window.addEventListener('pagehide',()=>worker?.terminate());
 const iPhone=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 const installed=navigator.standalone===true||matchMedia('(display-mode: standalone)').matches;

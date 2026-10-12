@@ -28,11 +28,50 @@ self.addEventListener('install',event=>event.waitUntil((async()=>{
     await cache.put(marker,new Response('complete'));
   }catch(error){await caches.delete(name);throw error;}
 })()));
-self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));
+async function versions(){
+  const result=[];
+  for(const name of await caches.keys()){
+    if(!/^sr-assets-[a-f0-9]{64}$/.test(name))continue;
+    const cache=await caches.open(name);if(!await cache.match(marker))continue;
+    const active=await cache.match(base+'.activated'),number=active?Number(await active.text()):0;
+    result.push({name,order:Number.isSafeInteger(number)&&number>0?number:0});
+  }return result;
+}
+function clientVersion(client){return new Promise(resolve=>{
+  const channel=new MessageChannel(),timer=setTimeout(()=>{channel.port1.close();resolve(null);},1500);
+  channel.port1.onmessage=({data})=>{clearTimeout(timer);channel.port1.close();resolve(data);};
+  try{client.postMessage({type:'cache-version'},[channel.port2]);}
+  catch{clearTimeout(timer);channel.port1.close();resolve(null);}
+});}
+async function pruneCaches(){
+  const complete=await versions(),keep=new Set(['sr-assets-'+BUILD_ID]);
+  const previous=complete.filter(item=>item.name!=='sr-assets-'+BUILD_ID&&item.order>0).sort((a,b)=>b.order-a.order)[0];
+  if(previous)keep.add(previous.name);
+  const clients=(await self.clients.matchAll({type:'window',includeUncontrolled:true})).filter(client=>{
+    const url=new URL(client.url);return url.origin===self.location.origin&&[base,base+'index.html'].includes(url.pathname);
+  });
+  for(const client of clients){
+    const data=await clientVersion(client);
+    // An unresponsive live window may still need old assets. Retry on next open.
+    if(!data)return;
+    if(!data.retired&&/^[a-f0-9]{64}$/.test(data.version||''))keep.add('sr-assets-'+data.version);
+  }
+  if(self.registration.installing||self.registration.waiting){
+    const staging=complete.filter(item=>item.order===0&&item.name!=='sr-assets-'+BUILD_ID).at(-1);
+    if(staging)keep.add(staging.name);
+  }
+  for(const item of complete)if(!keep.has(item.name))await caches.delete(item.name);
+}
+self.addEventListener('activate',event=>event.waitUntil((async()=>{
+  const old=await versions(),order=Math.max(0,...old.map(item=>item.order))+1;
+  const cache=await completedCache();if(!cache)throw new Error('Incomplete activation');
+  await cache.put(base+'.activated',new Response(String(order)));
+  await self.clients.claim();await pruneCaches().catch(()=>{});
+})()));
 self.addEventListener('message',event=>{
   const url=event.source?.url?new URL(event.source.url):null;
   if(!url || url.origin!==self.location.origin || ![base,base+'index.html'].includes(url.pathname))return;
-  if(event.data?.type==='register-shell' && typeof event.data.token==='string' && event.data.token.length>=16){owners.set(event.source.id,event.data.token);event.ports[0]?.postMessage({ready:true});}
+  if(event.data?.type==='register-shell' && typeof event.data.token==='string' && event.data.token.length>=16){owners.set(event.source.id,event.data.token);event.ports[0]?.postMessage({ready:true});event.waitUntil(pruneCaches().catch(()=>{}));}
   if(event.data?.type==='activate-update')self.skipWaiting();
 });
 const unavailable=()=>new Response('Open SehatRaasta from its Home Screen icon. Your records were not sent to a server.',{status:503,headers:{'Content-Type':'text/plain','Cache-Control':'no-store'}});

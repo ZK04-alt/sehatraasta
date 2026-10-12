@@ -180,8 +180,9 @@ def build_iphone(destination: Path, source_ref: str = 'HEAD', runtime_dir=None) 
     for name, content in sorted(public.items()):
         identity.update(name.encode() + b'\0' + sha256(content).digest())
     asset_set = identity.hexdigest()
-    if 'service-worker.mjs' in public:
-        public['service-worker.mjs'] = public['service-worker.mjs'].replace(b'__BUILD_ID__', asset_set.encode())
+    for name in ('service-worker.mjs', 'shell.mjs'):
+        if name in public:
+            public[name] = public[name].replace(b'__BUILD_ID__', asset_set.encode())
     for name, content in public.items():
         if PurePosixPath(name).is_absolute() or '..' in PurePosixPath(name).parts:
             raise ValueError('Invalid public asset path')
