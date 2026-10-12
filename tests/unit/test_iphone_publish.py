@@ -34,9 +34,23 @@ def website(tmp_path):
     git(repo, 'config', 'user.email', 'fixture@example.invalid')
     git(repo, 'config', 'core.autocrlf', 'false')
     git(repo, 'remote', 'add', 'origin', str(remote))
-    for name in ('.nojekyll', 'index.html', 'privacy.html', 'logo.svg', 'style.css'):
-        content = subprocess.check_output(['git', 'show', 'origin/website:' + name], cwd=ROOT)
-        (repo / name).write_bytes(content)
+    # Self-contained public fixture; a shallow CI checkout has no website ref.
+    fixtures = {
+        '.nojekyll': '',
+        'index.html': '<!doctype html><header>By Zunair Ali Khan</header>'
+            '<p><strong>SehatRaasta 1.6.0</strong> by Zunair Ali Khan.'
+            '<a href="' + APK + '">Download for Android</a></p>'
+            '<h2>Where records stay</h2><p>Local records.</p>'
+            '<a href="https://github.com/ZK04-alt/sehatraasta/tree/main">Project source</a>'
+            '<footer>Updated 9 October 2026.</footer>',
+        'privacy.html': '<h2>Privacy information</h2><p>Publisher: Zunair Ali Khan. '
+            'Contact: m.zunairalikhan@gmail.com.</p><h2>Camera and selected files</h2>'
+            '<footer>Updated 8 October 2026.</footer>',
+        'logo.svg': '<svg xmlns="http://www.w3.org/2000/svg"><path d="M0 0L10 10"/></svg>',
+        'style.css': '.meta {font-size:16px}',
+    }
+    for name, content in fixtures.items():
+        (repo / name).write_text(content)
     git(repo, 'add', '.')
     git(repo, 'commit', '-qm', 'website fixture')
     git(repo, 'push', '-q', 'origin', 'website')
@@ -87,3 +101,25 @@ def test_unlisted_private_file_cannot_be_published(website):
     with pytest.raises(ValueError, match='unexpected build file'):
         publisher().publish_iphone(build, head, repository=repo)
     assert git(remote, 'rev-parse', 'website') == head
+
+
+def test_publication_fetches_website_objects_missing_from_source_checkout(website, tmp_path):
+    _, remote, build, website_head = website
+    source = tmp_path / 'source-only'
+    source.mkdir()
+    git(source, 'init', '-q', '-b', 'development')
+    git(source, 'config', 'user.name', 'Publication Test')
+    git(source, 'config', 'user.email', 'fixture@example.invalid')
+    git(source, 'remote', 'add', 'origin', str(remote))
+    (source / 'source.txt').write_text('Independent source checkout')
+    git(source, 'add', '.')
+    git(source, 'commit', '-qm', 'source fixture')
+    source_head = git(source, 'rev-parse', 'HEAD')
+    manifest_path = build / 'asset-manifest.json'
+    manifest = json.loads(manifest_path.read_text())
+    manifest['source_revision'] = source_head
+    manifest_path.write_text(json.dumps(manifest))
+    commit = publisher().publish_iphone(build, website_head, repository=source)
+    assert git(remote, 'rev-parse', 'website') == commit
+    assert git(source, 'rev-parse', 'HEAD') == source_head
+    assert git(source, 'status', '--porcelain') == ''

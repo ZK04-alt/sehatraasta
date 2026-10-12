@@ -116,3 +116,11 @@ def test_python_only_change_has_a_new_offline_cache_identity(tmp_path, runtime_f
     monkeypatch.setattr(module, 'application_files', changed)
     second = module.build_iphone(tmp_path / 'second', runtime_dir=runtime_files)
     assert first['asset_set'] != second['asset_set']
+
+
+def test_build_environment_declares_every_exact_dependency():
+    module = builder()
+    lines = (ROOT / 'scripts/iphone-build-requirements.txt').read_text().splitlines()
+    actual = {line.strip() for line in lines if line.strip() and not line.startswith('#')}
+    expected = {name + '==' + settings[0] for name, settings in module.DEPENDENCIES.items()}
+    assert actual == expected

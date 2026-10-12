@@ -69,6 +69,11 @@ def publish_iphone(build: Path, expected_website_head: str, repository=ROOT, rem
         raise ValueError('build source does not match this branch')
     if git(repository, 'status', '--porcelain', '--untracked-files=all', '--', 'src/sehatraasta', 'browser', 'scripts/build_iphone.py').strip():
         raise ValueError('commit application changes before publication')
+    # Shallow source checkouts may not have the independent website objects.
+    git(repository, 'fetch', '--no-tags', remote, 'refs/heads/website')
+    refreshed = git(repository, 'ls-remote', '--heads', remote, 'refs/heads/website').decode().split()
+    if not refreshed or refreshed[0] != expected_website_head:
+        raise ValueError('website branch changed; inspect before publishing')
     index = git(repository, 'show', expected_website_head + ':index.html').decode()
     privacy = git(repository, 'show', expected_website_head + ':privacy.html').decode()
     index, privacy = landing_pages(index, privacy)
