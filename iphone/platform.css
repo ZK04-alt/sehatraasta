@@ -1,0 +1,1 @@
+.sr-qr-dialog{max-inline-size:min(560px,calc(100vw - 32px));border:1px solid #48563B;border-radius:3px;background:#FBF8F0;color:#303A2B;padding:20px}.sr-qr-dialog::backdrop{background:rgb(48 58 43/.45)}.sr-qr-video{display:block;inline-size:100%;max-block-size:55vh;object-fit:contain;background:#303A2B;margin-block:16px}.sr-qr-dialog button{inline-size:100%}

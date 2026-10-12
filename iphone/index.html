@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#48563B"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="SehatRaasta">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; worker-src 'self'; connect-src 'self'; object-src 'none'; form-action 'none'; base-uri 'none'">
+<title>SehatRaasta</title><link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon-192.png"><link rel="icon" href="./app/static/favicon.svg"><link rel="stylesheet" href="./shell.css">
+<script type="module" src="./shell.mjs"></script>
+</head><body data-state="starting">
+<main id="setup"><img class="wordmark" src="./app/static/wordmark.svg" width="240" height="72" alt="SehatRaasta">
+<nav aria-label="Language"><button data-lang="en" lang="en">English</button><button data-lang="ur" lang="ur">اردو</button><button data-lang="ps" lang="ps">پښتو</button></nav>
+<h1 id="heading">Opening SehatRaasta</h1><p id="message" role="status" aria-live="polite">Please wait.</p><p id="storage-note"></p>
+<button id="retry" hidden>Try again</button><button id="update" hidden>Install update</button>
+</main>
+<div id="update-notice" hidden role="status"><p id="update-message"></p><button id="apply-update">Update</button></div>
+<iframe id="app" title="SehatRaasta records" hidden sandbox="allow-scripts allow-same-origin allow-modals allow-downloads allow-forms" allow="camera"></iframe>
+<dialog id="export"><h2 id="export-title">Save file</h2><p id="export-name"></p><a id="save-file" class="button">Save to Files</a><button id="share-file" hidden>Share</button><button id="close-export">Close</button></dialog>
+</body></html>

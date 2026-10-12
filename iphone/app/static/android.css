@@ -1,0 +1,2 @@
+/* Legacy stylesheet URL retained for older clients. The website and Android now share interface.css. */
+@import url("interface.css");
