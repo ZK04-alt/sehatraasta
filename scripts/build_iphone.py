@@ -22,7 +22,7 @@ CORE_LICENSE_URLS = {
     'Emscripten-LICENSE.txt': 'https://raw.githubusercontent.com/emscripten-core/emscripten/5.0.3/LICENSE',
 }
 DEPENDENCIES = {
-    'flask': ('3.1.3', 'flask/'), 'werkzeug': ('3.1.8', 'werkzeug/'),
+    'flask': ('3.1.3', 'flask/'), 'werkzeug': ('3.1.9', 'werkzeug/'),
     'jinja2': ('3.1.6', 'jinja2/'), 'markupsafe': ('3.0.3', 'markupsafe/'),
     'itsdangerous': ('2.2.0', 'itsdangerous/'), 'click': ('8.5.0', 'click/'),
     'blinker': ('1.9.0', 'blinker/'), 'qrcode': ('8.2', 'qrcode/'),

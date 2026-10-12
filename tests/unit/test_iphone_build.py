@@ -124,3 +124,7 @@ def test_build_environment_declares_every_exact_dependency():
     actual = {line.strip() for line in lines if line.strip() and not line.startswith('#')}
     expected = {name + '==' + settings[0] for name, settings in module.DEPENDENCIES.items()}
     assert actual == expected
+
+
+def test_browser_packages_werkzeug_security_fix_release():
+    assert builder().DEPENDENCIES['werkzeug'][0] == '3.1.9'
